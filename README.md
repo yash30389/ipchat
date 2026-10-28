@@ -175,5 +175,4 @@ usernames, and chat/call between them. Admin console is at
   room grows to hundreds of thousands of messages.
 - Push notifications aren't wired up (see table above).
 - No email/SMS — identity is purely room+username+passphrase, by design.
-#   i p c h a t  
- 
+#
