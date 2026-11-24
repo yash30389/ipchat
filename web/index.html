@@ -1,0 +1,2757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IPChat</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --sky: #b9dcf2;
+      --sky-strong: #78b8df;
+      --white: #ffffff;
+      --ink: #172033;
+      --muted: #718096;
+      --line: #dceaf3;
+      --panel: #f7fbfe;
+      --danger: #d84b66;
+      --success: #2eb67d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      background: var(--white);
+      color: var(--ink);
+      font: 15px/1.45 Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .hidden { display: none !important; }
+    .auth-shell {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: linear-gradient(135deg, #ffffff 20%, #edf7fd 100%);
+    }
+    .auth-card {
+      width: min(420px, 100%);
+      padding: 32px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--white);
+      box-shadow: 0 24px 70px rgba(77, 147, 193, .14);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      font-size: 22px;
+      font-weight: 800;
+    }
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--sky);
+      color: #fff;
+      font-size: 20px;
+    }
+    .auth-card h1 { margin: 24px 0 6px; font-size: 28px; }
+    .muted { color: var(--muted); }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 22px 0 18px; }
+    .tabs button, .primary, .secondary, .icon-button {
+      border: 0;
+      border-radius: 10px;
+      min-height: 42px;
+      padding: 9px 13px;
+    }
+    .tabs button, .secondary { background: var(--panel); color: var(--ink); border: 1px solid var(--line); }
+    .tabs button.active, .primary { background: var(--sky); color: #17344a; border: 1px solid var(--sky); }
+    label { display: block; margin: 12px 0 6px; color: #526175; font-size: 13px; font-weight: 700; }
+    input, select {
+      width: 100%;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--white);
+      color: var(--ink);
+      padding: 0 12px;
+      outline: none;
+    }
+    input:focus, select:focus { border-color: var(--sky-strong); box-shadow: 0 0 0 3px rgba(185, 220, 242, .35); }
+    .primary, .secondary { width: 100%; margin-top: 14px; font-weight: 800; }
+    .auth-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0 14px; color: var(--muted); font-size: 12px; }
+    .auth-divider::before, .auth-divider::after { content: ""; height: 1px; flex: 1; background: var(--line); }
+    .oauth-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .oauth-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--white);
+      color: var(--ink);
+      font-weight: 700;
+    }
+    .oauth-button:hover:not(:disabled) { background: var(--panel); border-color: var(--sky-strong); }
+    .oauth-button:disabled { cursor: not-allowed; opacity: .48; }
+    .oauth-icon { font-size: 17px; font-weight: 900; }
+    .oauth-help { margin: 9px 0 0; color: var(--muted); font-size: 11px; text-align: center; }
+    #notice, #homeNotice, #chatNotice { min-height: 22px; margin-top: 10px; color: var(--danger); }
+
+    .app-shell { height: 100vh; height: 100dvh; min-height: 0; display: grid; grid-template-columns: 76px 244px minmax(0, 1fr) 260px; }
+    .app-shell.direct-chat { grid-template-columns: 76px 244px minmax(0, 1fr); }
+    .room-rail {
+      background: #edf7fd;
+      border-right: 1px solid var(--line);
+      padding: 14px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .rail-home, .room-bubble {
+      width: 52px;
+      height: 52px;
+      border: 0;
+      border-radius: 18px;
+      background: var(--white);
+      color: var(--ink);
+      font-weight: 800;
+      box-shadow: 0 4px 14px rgba(82, 139, 176, .12);
+      transition: .16s ease;
+    }
+    .room-bubble:hover, .room-bubble.active { border-radius: 14px; background: var(--sky); }
+    .rail-home { background: #17344a; color: white; }
+    .rail-add { margin-top: auto; background: var(--white); color: var(--sky-strong); border: 1px dashed var(--sky-strong); }
+    .channel-sidebar {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+    }
+    .sidebar-head {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .sidebar-head strong { font-size: 16px; }
+    .room-menu { width: 34px; height: 34px; min-height: 34px; padding: 0; }
+    .room-sidebar-content { padding: 12px; overflow-y: auto; }
+    .sidebar-section-title {
+      margin: 14px 7px 7px;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+    .blocked-user-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; color: var(--muted); font-size: 12px; }
+    .blocked-user-row button { min-height: 28px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--white); color: var(--ink); font-size: 11px; }
+    .channel {
+      width: 100%;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: #526175;
+      padding: 0 10px;
+      text-align: left;
+    }
+    .channel.active { background: var(--sky); color: #17344a; font-weight: 800; }
+    .dm-channel { justify-content: space-between; gap: 8px; }
+    .dm-peer-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sidebar-list-head { display: flex; align-items: center; justify-content: space-between; }
+    .sidebar-add { width: 28px; height: 28px; min-height: 28px; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 19px; }
+    .account-bar {
+      margin-top: auto;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 12px;
+      border-top: 1px solid var(--line);
+      background: var(--white);
+    }
+    .avatar {
+      flex: 0 0 auto;
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--sky);
+      color: #17344a;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .account-bar .user { min-width: 0; flex: 1; }
+    .account-bar strong, .account-bar small { display: block; overflow: hidden; text-overflow: ellipsis; }
+    .account-bar small { color: var(--muted); }
+    .presence-label { display: inline-flex !important; align-items: center; gap: 6px; white-space: nowrap; }
+    .status-dot { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: #a0aec0; }
+    .presence-label.online { color: #27875e; }
+    .presence-label.online .status-dot { background: var(--success); box-shadow: 0 0 0 3px rgba(46, 182, 125, .13); }
+    .presence-label.offline { color: var(--muted); }
+    .account-bar button { width: 34px; height: 34px; padding: 0; min-height: 34px; }
+
+    .chat-column { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--white); }
+    .chat-head {
+      height: 72px;
+      flex: 0 0 72px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    .chat-head .hash { color: var(--sky-strong); font-size: 26px; }
+    .chat-head strong { font-size: 17px; }
+    .chat-head small { display: block; color: var(--muted); }
+    .mobile-toggle { display: none; }
+    .messages {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 18px 20px 10px;
+      scroll-behavior: smooth;
+    }
+    .empty-room {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--muted);
+    }
+    .empty-room .big { font-size: 42px; color: var(--sky-strong); }
+    .message {
+      position: relative;
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) auto;
+      gap: 10px;
+      padding: 7px 8px;
+      border-radius: 10px;
+    }
+    .message:hover { background: var(--panel); }
+    .message-avatar { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; background: var(--sky); font-weight: 800; }
+    .message-meta { margin-bottom: 2px; }
+    .message-meta strong { font-size: 14px; }
+    .message-meta time { margin-left: 8px; color: var(--muted); font-size: 11px; }
+    .dm-read-receipt { margin-left: 7px; color: var(--muted); font-size: 11px; }
+    .dm-read-receipt.read { color: #27875e; font-weight: 800; }
+    .dm-read-receipt.delivered { color: #4b7f9d; }
+    .message-edited { margin-left: 6px; color: var(--muted); font-size: 11px; }
+    .load-older { display: block; width: auto; margin: 4px auto 12px; }
+    .message-body { white-space: pre-wrap; overflow-wrap: anywhere; color: #344258; }
+    .reply-quote {
+      display: grid;
+      gap: 1px;
+      margin: 0 0 7px;
+      padding: 5px 9px;
+      border-left: 3px solid var(--sky-strong);
+      border-radius: 0 7px 7px 0;
+      background: #f3f8fc;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 12px;
+      text-align: left;
+    }
+    .reply-quote strong { color: var(--ink); }
+    .reply-highlight { outline: 2px solid var(--sky-strong); }
+    .reply-preview {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 7px;
+      padding: 7px 10px;
+      border-left: 3px solid var(--sky-strong);
+      border-radius: 0 9px 9px 0;
+      background: #f3f8fc;
+      font-size: 12px;
+    }
+    .reply-preview span { min-width: 0; flex: 1; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+    .reply-preview button { border: 0; background: transparent; color: var(--muted); font-size: 18px; }
+    .message-actions { display: flex; align-items: flex-start; gap: 3px; }
+    .reply-message, .delete-message {
+      width: 32px;
+      height: 32px;
+      min-height: 32px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      opacity: 0;
+    }
+    .message:hover .reply-message, .message:hover .delete-message { opacity: 1; }
+    .reply-message:hover { background: var(--sky); color: #17344a; }
+    .delete-message {
+      align-self: start;
+    }
+    .delete-message:hover { background: #ffecee; color: var(--danger); }
+    .typing { height: 24px; padding: 0 20px; color: var(--muted); font-size: 12px; }
+    .chat-notice { min-height: 0; padding: 0 20px; color: var(--danger); font-size: 12px; }
+    .composer { position: relative; flex: 0 0 auto; padding: 8px 20px 18px; }
+    .composer form {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      padding: 7px;
+    }
+    .composer input[type="text"] { flex: 1; height: 38px; border: 0; background: transparent; box-shadow: none; }
+    .composer form > button { flex: 0 0 38px; width: 38px; height: 38px; min-height: 38px; padding: 0; background: transparent; border: 0; border-radius: 9px; color: var(--muted); font-size: 18px; }
+    .composer form > button.media-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      flex-basis: 48px;
+      width: 48px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      color: var(--ink);
+      font-size: 19px;
+      box-shadow: 0 2px 6px rgba(23, 32, 51, .05);
+    }
+    .media-button-gif {
+      padding: 2px 3px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, #8b5cf6, #ec4899);
+      color: #fff;
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: .03em;
+    }
+    .composer form > button.media-button:hover { border-color: var(--sky-strong); transform: translateY(-1px); }
+    .composer form > button.send-button { background: #edf2f7; color: #9aa8b7; cursor: not-allowed; transition: .15s ease; }
+    .composer form > button.send-button.ready { background: var(--sky); color: #17344a; cursor: pointer; box-shadow: 0 3px 9px rgba(120, 184, 223, .35); }
+    .composer form > button.send-button.ready:hover { background: var(--sky-strong); transform: translateY(-1px); }
+    .emoji-picker {
+      position: absolute;
+      bottom: calc(76px + env(safe-area-inset-bottom));
+      left: 12px;
+      z-index: 8;
+      width: min(390px, calc(100vw - 24px));
+      max-height: min(65dvh, 520px);
+      overflow-y: auto;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--white);
+      box-shadow: 0 12px 35px rgba(23, 32, 51, .16);
+    }
+    .media-picker-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .media-picker-tabs { display: flex; gap: 5px; }
+    .media-picker-tabs button, .media-picker-close {
+      min-height: 36px;
+      padding: 6px 11px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .media-picker-tabs button.active { border-color: var(--line); background: #edf7fd; color: #17344a; }
+    .media-picker-close { width: 36px; padding: 0; font-size: 19px; }
+    .media-picker-close:hover, .media-picker-tabs button:hover { background: var(--panel); color: var(--ink); }
+    .emoji-categories { display: flex; gap: 5px; margin: 0 -2px 9px; overflow-x: auto; scrollbar-width: thin; }
+    .emoji-category {
+      flex: 0 0 auto;
+      min-height: 31px;
+      padding: 4px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--white);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .emoji-category.active { border-color: var(--sky-strong); background: #edf7fd; color: #17344a; }
+    .emoji-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px; }
+    .emoji-picker .emoji-option { width: 100%; height: 40px; min-height: 40px; padding: 0; border: 0; border-radius: 9px; background: transparent; font-size: 23px; }
+    .emoji-picker .emoji-option:hover { background: var(--panel); }
+    .gif-search { display: flex; gap: 7px; }
+    .gif-search input { min-width: 0; height: 40px; }
+    .gif-search button { min-width: 72px; min-height: 40px; border: 0; border-radius: 9px; background: var(--sky); color: #17344a; font-size: 12px; font-weight: 800; }
+    .gif-license-note, .gif-status { margin: 8px 0; color: var(--muted); font-size: 11px; }
+    .gif-status:empty { display: none; }
+    .gif-results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .gif-result {
+      min-width: 0;
+      overflow: hidden;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--ink);
+      text-align: left;
+    }
+    .gif-result:hover { border-color: var(--sky-strong); box-shadow: 0 3px 10px rgba(82, 139, 176, .12); }
+    .gif-result img { display: block; width: 100%; height: 92px; background: #edf7fd; object-fit: cover; }
+    .gif-result-info { display: block; padding: 6px 8px; }
+    .gif-result-info strong, .gif-result-info small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .gif-result-info strong { font-size: 11px; }
+    .gif-result-info small { margin-top: 2px; color: var(--muted); font-size: 10px; }
+    .gif-attribution { color: var(--muted); font-size: 10px; text-decoration: underline; text-underline-offset: 2px; }
+    .dm-record-actions { display: flex; gap: 8px; margin-bottom: 10px; }
+    .dm-record-actions button {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 34px;
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--white);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .dm-record-actions button:hover { border-color: var(--sky-strong); background: #f2f9fd; }
+    .dm-record-actions button.recording { border-color: #f3abb6; background: #fff3f5; color: var(--danger); }
+    .recording-notice { margin: 0 0 7px; color: var(--danger); font-size: 12px; font-weight: 700; }
+    .dm-expiry-select { width: auto; height: 36px; padding: 0 8px; font-size: 12px; }
+    .note-player { display: block; width: min(340px, 100%); margin-top: 6px; }
+    .message-reactions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+    .reaction-chip { min-height: 27px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--white); color: var(--ink); }
+    .reaction-chip.mine { border-color: var(--sky-strong); background: #edf7fd; }
+    .reaction-picker { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+    .reaction-picker button { padding: 3px 6px; border: 0; border-radius: 6px; background: transparent; font-size: 18px; }
+    .attachment-card { display: grid; gap: 6px; margin-top: 6px; }
+    .attachment-preview { max-width: min(420px, 100%); max-height: 360px; border-radius: 10px; object-fit: contain; background: var(--panel); }
+    .attachment-link { width: fit-content; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); padding: 7px 10px; color: var(--ink); }
+    .gif-preview { display: block; width: auto; max-width: min(360px, 100%); max-height: 320px; border-radius: 10px; margin-top: 6px; background: var(--panel); }
+
+    .members-panel {
+      background: var(--panel);
+      border-left: 1px solid var(--line);
+      padding: 18px 12px;
+      overflow-y: auto;
+    }
+    .members-title { display: flex; justify-content: space-between; align-items: center; margin: 0 8px 12px; }
+    .members-title strong { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+    .member-group { margin-bottom: 18px; }
+    .member-row {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 8px;
+      border-radius: 10px;
+    }
+    .member-row:hover { background: var(--white); }
+    .member-row .avatar { width: 38px; height: 38px; }
+    .member-name { min-width: 0; }
+    .member-name strong { display: block; overflow: hidden; text-overflow: ellipsis; }
+    .member-name small { color: var(--muted); }
+    .presence { color: var(--success); }
+    .member-actions { display: flex; gap: 4px; }
+    .member-actions select { width: 92px; height: 34px; padding: 0 6px; font-size: 12px; }
+    .kick { width: 34px; height: 34px; min-height: 34px; padding: 0; border: 0; border-radius: 8px; background: #ffecef; color: var(--danger); }
+    .member-safety-actions { display: flex; gap: 3px; }
+    .member-safety-actions button { width: 30px; height: 30px; min-height: 30px; padding: 0; border: 0; border-radius: 7px; background: var(--panel); color: var(--muted); }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(23, 32, 51, .26);
+      backdrop-filter: blur(6px);
+    }
+    .modal {
+      width: min(440px, 100%);
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--white);
+      box-shadow: 0 24px 80px rgba(23, 32, 51, .18);
+    }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; }
+    .modal-head h2 { margin: 0; }
+    .modal-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .modal-tabs button { width: 100%; margin: 0; }
+    .modal form { margin-top: 8px; }
+    .close-modal { width: 34px; height: 34px; min-height: 34px; padding: 0; border: 0; background: var(--panel); color: var(--muted); }
+
+    @media (max-width: 980px) {
+      .app-shell { grid-template-columns: 68px 220px minmax(0, 1fr); }
+      .app-shell.direct-chat { grid-template-columns: 68px 220px minmax(0, 1fr); }
+      .members-panel {
+        position: fixed;
+        z-index: 12;
+        right: 0;
+        top: 72px;
+        bottom: 0;
+        width: 260px;
+        transform: translateX(100%);
+        transition: transform .2s ease;
+        box-shadow: -10px 0 30px rgba(23, 32, 51, .08);
+      }
+      .members-panel.open { transform: translateX(0); }
+      .mobile-toggle { display: inline-grid; width: 38px; height: 38px; min-height: 38px; padding: 0; place-items: center; margin-left: auto; }
+    }
+    @media (max-width: 680px) {
+      body { overflow: hidden; }
+      .app-shell { grid-template-columns: 58px minmax(0, 1fr); }
+      .app-shell.direct-chat { grid-template-columns: 58px minmax(0, 1fr); }
+      .room-rail { padding: 10px 6px; }
+      .rail-home, .room-bubble { width: 46px; height: 46px; border-radius: 15px; }
+      .channel-sidebar {
+        position: fixed;
+        z-index: 15;
+        left: 58px;
+        top: 0;
+        bottom: 0;
+        width: min(280px, calc(100vw - 58px));
+        transform: translateX(-110%);
+        transition: transform .2s ease;
+        box-shadow: 12px 0 30px rgba(23, 32, 51, .12);
+      }
+      .channel-sidebar.open { transform: translateX(0); }
+      .chat-column { grid-column: 2; }
+      .chat-head { height: 64px; flex-basis: 64px; gap: 7px; padding: 0 9px; }
+      .chat-head > div { min-width: 0; overflow: hidden; }
+      .chat-head strong, .chat-head small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .mobile-toggle { display: inline-grid; }
+      .chat-head .mobile-toggle { flex: 0 0 34px; width: 34px; height: 34px; min-height: 34px; margin-left: 0; }
+      .chat-head #dmExpirySelect { max-width: 80px; height: 34px; padding: 0 4px; font-size: 10px; }
+      .chat-head #dmBlockButton, .chat-head #dmReportButton, .chat-head #leaveRoomBtn {
+        flex: 0 0 34px;
+        width: 34px !important;
+        height: 34px;
+        min-height: 34px;
+        overflow: hidden;
+        padding: 0;
+        font-size: 0;
+      }
+      .chat-head #dmBlockButton::before { content: "⊘"; font-size: 17px; }
+      .chat-head #dmReportButton::before { content: "!"; font-size: 17px; }
+      .chat-head #leaveRoomBtn::before { content: "×"; font-size: 20px; }
+      .messages { padding: 12px 10px; }
+      .message { grid-template-columns: 36px minmax(0, 1fr); padding: 8px 4px; }
+      .message-avatar { width: 36px; height: 36px; }
+      .reply-message, .delete-message { width: 34px; height: 34px; min-height: 34px; opacity: 1; }
+      .delete-message { position: absolute; right: 4px; }
+      .composer { padding: 6px 8px calc(10px + env(safe-area-inset-bottom)); }
+      .typing { padding: 0 10px; }
+      .members-panel { top: 64px; }
+      .emoji-picker { left: 6px; bottom: calc(68px + env(safe-area-inset-bottom)); width: min(390px, calc(100vw - 70px)); max-height: min(60dvh, 470px); }
+      .emoji-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+      .gif-result img { height: 74px; }
+    }
+    @media (max-width: 390px) {
+      .room-rail { padding-left: 4px; padding-right: 4px; }
+      .rail-home, .room-bubble { width: 44px; height: 44px; }
+      .chat-head { gap: 5px; }
+      .chat-head .hash { display: none; }
+      .chat-head #dmExpirySelect { max-width: 68px; }
+      .chat-head #dmBlockButton, .chat-head #dmReportButton { flex-basis: 30px; width: 30px !important; }
+      .chat-head #leaveRoomBtn, .chat-head .mobile-toggle { flex-basis: 32px; width: 32px; }
+      .composer form { gap: 4px; padding: 5px; }
+      .composer form > button { flex-basis: 34px; width: 34px; }
+      .composer form > button.media-button { flex-basis: 42px; width: 42px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <section id="authView" class="auth-shell">
+    <div class="auth-card">
+      <div class="brand"><span class="brand-mark">IP</span><span>IPChat</span></div>
+      <h1>Welcome back</h1>
+      <p class="muted">Sign in or create an account to join your rooms.</p>
+      <div class="tabs">
+        <button id="loginTab" class="active">Login</button>
+        <button id="registerTab">Register</button>
+      </div>
+      <form id="authForm">
+        <label for="username">Username</label>
+        <input id="username" required minlength="3" maxlength="40" autocomplete="username">
+        <label for="password">Password</label>
+        <input id="password" type="password" required minlength="8" maxlength="72" autocomplete="current-password">
+        <button id="authSubmit" class="primary" type="submit">Login</button>
+      </form>
+      <div class="auth-divider">or continue with</div>
+      <div class="oauth-buttons">
+        <button id="githubSignIn" class="oauth-button" type="button" disabled><span class="oauth-icon">GH</span> GitHub</button>
+        <button id="googleSignIn" class="oauth-button" type="button" disabled><span class="oauth-icon">G</span> Google</button>
+      </div>
+      <p id="oauthHelp" class="oauth-help"></p>
+      <div id="notice"></div>
+    </div>
+  </section>
+
+  <section id="homeView" class="app-shell hidden">
+    <nav class="room-rail" aria-label="Room navigation">
+      <button id="railHome" class="rail-home" title="All rooms">IP</button>
+      <div id="roomBubbles" style="display:flex;flex-direction:column;gap:10px"></div>
+      <button id="railAdd" class="room-bubble rail-add" title="Create or join a room">+</button>
+    </nav>
+    <aside id="channelSidebar" class="channel-sidebar">
+      <div class="sidebar-head">
+        <strong id="sidebarRoomName">Your rooms</strong>
+        <button id="roomMenuBtn" class="secondary room-menu" title="Create or join">+</button>
+      </div>
+      <div class="room-sidebar-content">
+        <div class="sidebar-section-title">Rooms</div>
+        <div id="roomList"></div>
+        <div class="sidebar-list-head">
+          <div class="sidebar-section-title">Direct messages</div>
+          <button id="newDMButton" class="sidebar-add" title="Start a direct chat">+</button>
+        </div>
+        <div id="directList"></div>
+        <div id="blockedUsersSection" class="hidden">
+          <div class="sidebar-section-title">Blocked users</div>
+          <div id="blockedList"></div>
+        </div>
+      </div>
+      <div class="account-bar">
+        <span class="avatar" id="accountAvatar"></span>
+        <span class="user"><strong id="accountLabel"></strong><small id="accountStatus" class="presence-label offline"><span class="status-dot"></span>Offline</small></span>
+        <button id="logoutBtn" class="secondary" title="Logout">↪</button>
+      </div>
+    </aside>
+    <main class="chat-column">
+      <header class="chat-head">
+        <span class="hash">#</span>
+        <div style="flex:1">
+          <strong id="roomTitle">Select a room</strong>
+          <small id="roomCodeLabel">Choose a room to start chatting</small>
+        </div>
+        <button id="mobileSidebarBtn" class="secondary mobile-toggle">☰</button>
+        <button id="mobileMembersBtn" class="secondary mobile-toggle">•••</button>
+        <select id="dmExpirySelect" class="dm-expiry-select hidden" title="Disappearing messages" aria-label="Disappearing messages">
+          <option value="0">Expiry off</option>
+          <option value="86400">24 hours</option>
+          <option value="604800">7 days</option>
+          <option value="7776000">90 days</option>
+        </select>
+        <button id="dmBlockButton" class="secondary hidden" style="width:auto;margin:0">Block</button>
+        <button id="dmReportButton" class="secondary hidden" style="width:auto;margin:0">Report</button>
+        <button id="leaveRoomBtn" class="secondary" style="width:auto;margin:0">Leave</button>
+      </header>
+      <div id="messages" class="messages">
+        <div id="emptyRoom" class="empty-room">
+          <div><div class="big">#</div><h2>Choose a room</h2><p>Start by creating a room or joining with a room code.</p></div>
+        </div>
+      </div>
+      <div id="typing" class="typing"></div>
+      <div id="chatNotice" class="chat-notice"></div>
+      <div class="composer">
+        <div id="emojiPicker" class="emoji-picker hidden">
+          <div class="media-picker-header">
+            <div class="media-picker-tabs" role="tablist" aria-label="Message media">
+              <button id="emojiTab" class="active" type="button" role="tab" aria-selected="true">😊 Emoji</button>
+              <button id="gifTab" type="button" role="tab" aria-selected="false">GIFs</button>
+            </div>
+            <button id="closeMediaPicker" class="media-picker-close" type="button" aria-label="Close picker">×</button>
+          </div>
+          <div id="emojiPanel" role="tabpanel">
+            <div id="dmRecordActions" class="dm-record-actions hidden">
+              <button id="voiceRecordButton" type="button" title="Record a voice message"><span aria-hidden="true">🎙️</span> Voice note</button>
+              <button id="videoRecordButton" type="button" title="Record a short video message"><span aria-hidden="true">📹</span> Video note</button>
+            </div>
+            <div id="emojiCategories" class="emoji-categories" aria-label="Emoji categories"></div>
+            <div id="emojiGrid" class="emoji-grid"></div>
+          </div>
+          <div id="gifPanel" class="gif-panel hidden" role="tabpanel">
+            <form id="gifSearchForm" class="gif-search">
+              <input id="gifSearchInput" type="search" maxlength="80" placeholder="Search GIFs" aria-label="Search GIFs">
+              <button type="submit">Search</button>
+            </form>
+              <p class="gif-license-note">Original IPChat GIFs · encrypted before sharing</p>
+            <div id="gifStatus" class="gif-status" role="status" aria-live="polite"></div>
+            <div id="gifResults" class="gif-results"></div>
+          </div>
+        </div>
+        <div id="recordingNotice" class="recording-notice hidden"></div>
+        <div id="replyPreview" class="reply-preview hidden">
+          <span id="replyPreviewText"></span>
+          <button id="cancelReplyButton" type="button" aria-label="Cancel reply">×</button>
+        </div>
+        <form id="messageForm">
+          <input id="attachmentInput" type="file" multiple hidden>
+          <button id="attachmentButton" type="button" title="Attach files">📎</button>
+          <button id="mediaButton" class="media-button" type="button" title="Emoji and GIFs" aria-label="Emoji and GIFs" aria-expanded="false">
+            <span aria-hidden="true">😊</span><span class="media-button-gif" aria-hidden="true">GIF</span>
+          </button>
+          <input id="messageInput" type="text" maxlength="4000" placeholder="Message #room" autocomplete="off">
+          <button id="sendButton" class="send-button" type="submit" title="Send" disabled>➤</button>
+        </form>
+      </div>
+    </main>
+    <aside id="membersPanel" class="members-panel">
+      <div class="members-title"><strong>Members</strong><span id="memberCount" class="muted"></span></div>
+      <div id="members"></div>
+    </aside>
+  </section>
+
+  <div id="roomModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="roomModalTitle">Create or join</h2>
+        <button id="closeRoomModal" class="close-modal">×</button>
+      </div>
+      <div class="modal-tabs">
+        <button id="createToggle" class="secondary">Create</button>
+        <button id="joinToggle" class="secondary">Join</button>
+      </div>
+      <form id="createForm" class="hidden">
+        <label for="roomName">Room name</label>
+        <input id="roomName" maxlength="80" placeholder="My community">
+        <label for="newRoomPassword">Room password</label>
+        <input id="newRoomPassword" type="password" minlength="8" maxlength="72" required>
+        <button type="submit" class="primary">Create room</button>
+      </form>
+      <form id="joinForm" class="hidden">
+        <label for="roomCode">Room code</label>
+        <input id="roomCode" maxlength="16" required>
+        <label for="joinPassword">Room password</label>
+        <input id="joinPassword" type="password" required>
+        <button type="submit" class="primary">Join room</button>
+      </form>
+      <div id="homeNotice"></div>
+    </div>
+  </div>
+
+  <div id="inputModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="inputModalTitle"></h2>
+        <button id="closeInputModal" class="close-modal" type="button" aria-label="Close">×</button>
+      </div>
+      <form id="inputModalForm">
+        <label id="inputModalLabel" for="inputModalValue"></label>
+        <input id="inputModalValue" autocomplete="off" required>
+        <div id="inputModalNotice" class="muted"></div>
+        <div style="display:flex;gap:8px">
+          <button id="cancelInputModal" type="button" class="secondary">Cancel</button>
+          <button id="submitInputModal" type="submit" class="primary"></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    let token = localStorage.getItem("ipchat_token") || "";
+    let username = localStorage.getItem("ipchat_username") || "";
+    let currentRoom = "";
+    let currentRoomName = "";
+    let currentChatType = "room";
+    let chatOpenGeneration = 0;
+    let currentDMId = 0;
+    let currentDMUsername = "";
+    let currentDMExpiry = 0;
+    let currentDMBlockedByMe = false;
+    let currentDMBlockedMe = false;
+    let latestDMMessageID = 0;
+    let oldestMessageID = 0;
+    let hasOlderMessages = false;
+    let loadingOlderMessages = false;
+    let pendingReply = null;
+    let activeDMRecording = null;
+    let currentRole = "";
+    let socket = null;
+    let presenceSocket = null;
+    let presenceConnectPromise = null;
+    let presenceReconnectTimer = null;
+    let presenceGeneration = 0;
+    let typingTimer = null;
+    let typingUsers = new Set();
+    let onlineUsers = [];
+    let directConversations = [];
+    const blockedUsernames = new Set();
+    const decryptedMessages = new Map();
+    let roomCryptoKey = null;
+    let roomPassphrase = "";
+    let roomSalt = "";
+    let roomMembers = [];
+    const roomCredentials = new Map();
+    let dmPrivateKey = null;
+    let dmOwnPublicJWK = null;
+    let dmIdentityPromise = null;
+    let directEncryptionKeys = {};
+    let activeEmojiCategory = "Smileys";
+    const emojiGroups = {
+      Smileys: ["😀", "😃", "😄", "😁", "😆", "😂", "🤣", "🥲", "😊", "😇", "🙂", "🙃", "😉", "😍", "🥰", "😘", "😋", "😎", "🤔", "🤗", "😭", "😢", "😮", "😴", "😡", "🥳", "🤩", "😬"],
+      People: ["👋", "🤚", "✋", "🖐️", "👌", "🤌", "✌️", "🤞", "🤟", "🤘", "👏", "🙌", "🫶", "🙏", "💪", "🫡", "👀", "🧠", "💃", "🕺"],
+      Nature: ["🐶", "🐱", "🐭", "🐼", "🦊", "🐻", "🐸", "🐵", "🦄", "🐝", "🦋", "🐢", "🐬", "🐳", "🌸", "🌻", "🌈", "☀️", "🌙", "⭐"],
+      Food: ["🍎", "🍓", "🍒", "🍉", "🍕", "🍔", "🍟", "🌮", "🍜", "🍣", "🍩", "🍪", "🎂", "🍰", "☕", "🧋", "🥤", "🍿"],
+      Activity: ["⚽", "🏀", "🏈", "⚾", "🎾", "🏐", "🎮", "🎯", "🎲", "🎸", "🎤", "🎧", "🎨", "🏆", "🥇", "🎉", "🎊", "🔥"],
+      Travel: ["🚗", "🚕", "🚌", "🚲", "✈️", "🚀", "🚂", "🚢", "🏠", "🏖️", "🏔️", "🌋", "🌍", "🌃"],
+      Symbols: ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "💔", "💯", "✅", "❌", "⚠️", "💤", "✨", "💫", "🔔", "🎵", "👍", "👎"]
+    };
+    const reactionChoices = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🔥", "🎉", "👏", "👎"];
+
+    function showAuth() {
+      $("authView").classList.remove("hidden");
+      $("homeView").classList.add("hidden");
+    }
+
+    function showHome() {
+      $("authView").classList.add("hidden");
+      $("homeView").classList.remove("hidden");
+      $("accountLabel").textContent = username;
+      $("accountAvatar").textContent = username.slice(0, 2);
+      updatePresence([]);
+      loadRooms();
+      loadDirectMessages();
+      loadBlockedUsers();
+      connectPresenceSocket();
+      ensureDMIdentity().catch(err => notice("chatNotice", err.message));
+    }
+
+    function notice(id, message) { $(id).textContent = message || ""; }
+
+    function openInputModal({
+      title, label, placeholder, submitLabel, type = "text", description = "", maxLength = 500
+    }) {
+      $("inputModalTitle").textContent = title;
+      $("inputModalLabel").textContent = label;
+      $("inputModalValue").type = type;
+      $("inputModalValue").maxLength = maxLength;
+      $("inputModalValue").placeholder = placeholder;
+      $("inputModalValue").value = "";
+      $("inputModalNotice").textContent = description;
+      $("submitInputModal").textContent = submitLabel;
+      $("inputModal").classList.remove("hidden");
+      $("inputModalValue").focus();
+      return new Promise(resolve => {
+        const close = value => {
+          $("inputModal").classList.add("hidden");
+          $("inputModalForm").onsubmit = null;
+          $("closeInputModal").onclick = null;
+          $("cancelInputModal").onclick = null;
+          resolve(value);
+        };
+        $("inputModalForm").onsubmit = event => {
+          event.preventDefault();
+          close($("inputModalValue").value.trim());
+        };
+        $("closeInputModal").onclick = () => close(null);
+        $("cancelInputModal").onclick = () => close(null);
+      });
+    }
+
+    async function api(path, method = "GET", body = null) {
+      const options = { method, headers: { "Authorization": "Bearer " + token } };
+      if (body !== null) {
+        options.headers["Content-Type"] = "application/json";
+        options.body = JSON.stringify(body);
+      }
+      const response = await fetch(path, options);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Request failed");
+      return data;
+    }
+
+    function ensureDMIdentity() {
+      if (dmPrivateKey && dmOwnPublicJWK) return Promise.resolve();
+      if (!dmIdentityPromise) {
+        dmIdentityPromise = initializeDMIdentity().finally(() => { dmIdentityPromise = null; });
+      }
+      return dmIdentityPromise;
+    }
+
+    async function initializeDMIdentity() {
+      const serverKey = await api("/api/dms/key");
+      const storageKey = "ipchat_dm_keypair:" + username;
+      const stored = localStorage.getItem(storageKey);
+      let pair;
+      if (stored) {
+        pair = JSON.parse(stored);
+      } else {
+        if (serverKey.own_public_key &&
+            !confirm("This account already has an encryption key but this browser does not. Replacing it may make older direct messages unreadable. Continue?")) {
+          throw new Error("Direct-message encryption was not initialized on this device.");
+        }
+        const generated = await crypto.subtle.generateKey(
+          { name: "RSA-OAEP", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+          true, ["encrypt", "decrypt"]
+        );
+        pair = {
+          privateKey: await crypto.subtle.exportKey("jwk", generated.privateKey),
+          publicKey: await crypto.subtle.exportKey("jwk", generated.publicKey)
+        };
+        localStorage.setItem(storageKey, JSON.stringify(pair));
+      }
+      const encodedPublicKey = JSON.stringify(pair.publicKey);
+      if (serverKey.own_public_key && serverKey.own_public_key !== encodedPublicKey &&
+          !confirm("This browser's direct-message key differs from the account key. Replacing the account key may limit access from other devices. Continue?")) {
+        throw new Error("Direct-message encryption key was not changed.");
+      }
+      dmPrivateKey = await crypto.subtle.importKey(
+        "jwk", pair.privateKey, { name: "RSA-OAEP", hash: "SHA-256" }, false, ["decrypt"]
+      );
+      dmOwnPublicJWK = pair.publicKey;
+      await api("/api/dms/key", "PUT", { public_key: encodedPublicKey });
+    }
+
+    let authMode = "login";
+    function setAuthMode(mode) {
+      authMode = mode;
+      $("authSubmit").textContent = mode === "login" ? "Login" : "Create account";
+      $("loginTab").classList.toggle("active", mode === "login");
+      $("registerTab").classList.toggle("active", mode === "register");
+      $("password").autocomplete = mode === "login" ? "current-password" : "new-password";
+      notice("notice", "");
+    }
+    $("loginTab").onclick = () => setAuthMode("login");
+    $("registerTab").onclick = () => setAuthMode("register");
+    $("githubSignIn").onclick = () => { window.location.assign("/auth/github"); };
+    $("googleSignIn").onclick = () => { window.location.assign("/auth/google"); };
+
+    async function loadOAuthProviders() {
+      try {
+        const response = await fetch("/api/auth/providers");
+        const providers = await response.json();
+        $("githubSignIn").disabled = !providers.github;
+        $("googleSignIn").disabled = !providers.google;
+        if (!providers.github || !providers.google) {
+          $("oauthHelp").textContent = "Unavailable providers need OAuth credentials configured by the administrator.";
+        }
+      } catch (_) {
+        $("oauthHelp").textContent = "Social sign-in status could not be loaded.";
+      }
+    }
+
+    async function handleOAuthReturn() {
+      const params = new URLSearchParams(location.hash.slice(1));
+      const ticket = params.get("oauth_ticket");
+      const error = params.get("oauth_error");
+      if (!ticket && !error) return false;
+      history.replaceState(null, "", location.pathname + location.search);
+      if (error) {
+        const messages = {
+          provider_denied: "Sign-in was cancelled at the provider.",
+          verified_email_required: "A verified email address is required to create your account.",
+          sign_in_failed: "Social sign-in could not be completed. Please try again."
+        };
+        notice("notice", messages[error] || messages.sign_in_failed);
+        return false;
+      }
+      try {
+        const result = await api("/api/auth/exchange", "POST", { ticket });
+        token = result.token;
+        username = result.username;
+        localStorage.setItem("ipchat_token", token);
+        localStorage.setItem("ipchat_username", username);
+        showHome();
+        return true;
+      } catch (err) {
+        notice("notice", err.message);
+        return false;
+      }
+    }
+
+    $("authForm").onsubmit = async e => {
+      e.preventDefault();
+      notice("notice", "");
+      try {
+        const result = await api("/api/" + (authMode === "login" ? "login" : "register"), "POST", {
+          username: $("username").value.trim(),
+          password: $("password").value
+        });
+        token = result.token;
+        username = result.username;
+        localStorage.setItem("ipchat_token", token);
+        localStorage.setItem("ipchat_username", username);
+        showHome();
+      } catch (err) { notice("notice", err.message); }
+    };
+
+    $("logoutBtn").onclick = () => {
+      chatOpenGeneration++;
+      stopDMRecording(true);
+      stopPresenceSocket();
+      if (socket) socket.close();
+      socket = null;
+      $("messageInput").value = "";
+      syncSendButton();
+      token = "";
+      username = "";
+      currentRoom = "";
+      currentChatType = "room";
+      currentDMId = 0;
+      currentDMUsername = "";
+      currentDMExpiry = 0;
+      currentDMBlockedByMe = false;
+      currentDMBlockedMe = false;
+      latestDMMessageID = 0;
+      oldestMessageID = 0;
+      hasOlderMessages = false;
+      loadingOlderMessages = false;
+      pendingReply = null;
+      decryptedMessages.clear();
+      updateReplyPreview();
+      dmPrivateKey = null;
+      dmOwnPublicJWK = null;
+      directEncryptionKeys = {};
+      blockedUsernames.clear();
+      renderBlockedUsers();
+      $("dmExpirySelect").classList.add("hidden");
+      $("dmRecordActions").classList.add("hidden");
+      $("dmBlockButton").classList.add("hidden");
+      $("dmReportButton").classList.add("hidden");
+      $("messageInput").disabled = false;
+      $("attachmentButton").disabled = false;
+      $("mediaButton").disabled = false;
+      $("messageInput").placeholder = "Message #room";
+      localStorage.removeItem("ipchat_token");
+      localStorage.removeItem("ipchat_username");
+      setAuthMode("login");
+      showAuth();
+    };
+
+    function openRoomModal(mode = "create") {
+      $("roomModal").classList.remove("hidden");
+      setRoomModalMode(mode);
+    }
+    function closeRoomModal() { $("roomModal").classList.add("hidden"); notice("homeNotice", ""); }
+    function setRoomModalMode(mode) {
+      $("createForm").classList.toggle("hidden", mode !== "create");
+      $("joinForm").classList.toggle("hidden", mode !== "join");
+      $("createToggle").className = mode === "create" ? "primary" : "secondary";
+      $("joinToggle").className = mode === "join" ? "primary" : "secondary";
+    }
+    $("railAdd").onclick = () => openRoomModal("create");
+    $("roomMenuBtn").onclick = () => openRoomModal("create");
+    $("closeRoomModal").onclick = closeRoomModal;
+    $("roomModal").onclick = e => { if (e.target === $("roomModal")) closeRoomModal(); };
+    $("createToggle").onclick = () => setRoomModalMode("create");
+    $("joinToggle").onclick = () => setRoomModalMode("join");
+
+    $("createForm").onsubmit = async e => {
+      e.preventDefault();
+      notice("homeNotice", "");
+      try {
+        const result = await api("/api/rooms/create", "POST", {
+          name: $("roomName").value.trim(),
+          password: $("newRoomPassword").value
+        });
+        closeRoomModal();
+        roomCredentials.set(result.room_code, { passphrase: $("newRoomPassword").value, salt: result.e2ee_salt || "" });
+        await openRoom(result.room_code, result.room_name, result.role, $("newRoomPassword").value, result.e2ee_salt || "");
+        await loadRooms();
+      } catch (err) { notice("homeNotice", err.message); }
+    };
+
+    $("joinForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      notice("homeNotice", "");
+      try {
+        const result = await api("/api/rooms/join", "POST", {
+          room_code: $("roomCode").value.trim(),
+          password: $("joinPassword").value
+        });
+        closeRoomModal();
+        roomCredentials.set(result.room_code, { passphrase: $("joinPassword").value, salt: result.e2ee_salt || "" });
+        await openRoom(result.room_code, result.room_name, result.role, $("joinPassword").value, result.e2ee_salt || "");
+        await loadRooms();
+      } catch (err) { notice("homeNotice", err.message); }
+    });
+
+    async function loadRooms() {
+      try {
+        const rooms = await api("/api/rooms");
+        $("roomList").replaceChildren();
+        $("roomBubbles").replaceChildren();
+        rooms.forEach(room => {
+          const channel = document.createElement("button");
+          channel.className = "channel" + (room.room_code === currentRoom ? " active" : "");
+          channel.textContent = "# " + room.room_name;
+          channel.onclick = () => {
+            const credentials = roomCredentials.get(room.room_code);
+            openRoom(room.room_code, room.room_name, room.role, credentials?.passphrase || "", credentials?.salt || "");
+          };
+          $("roomList").append(channel);
+
+          const bubble = document.createElement("button");
+          bubble.className = "room-bubble" + (room.room_code === currentRoom ? " active" : "");
+          bubble.textContent = room.room_name.slice(0, 2).toUpperCase();
+          bubble.title = room.room_name;
+          bubble.onclick = () => {
+            const credentials = roomCredentials.get(room.room_code);
+            openRoom(room.room_code, room.room_name, room.role, credentials?.passphrase || "", credentials?.salt || "");
+          };
+          $("roomBubbles").append(bubble);
+        });
+      } catch (err) { notice("homeNotice", err.message); }
+    }
+
+    async function loadDirectMessages() {
+      try {
+        const activeToken = token;
+        const conversations = await api("/api/dms");
+        if (token !== activeToken) return;
+        directConversations = conversations;
+        renderDirectMessages();
+        const activeConversation = directConversations.find(conversation => conversation.id === currentDMId);
+        if (activeConversation) {
+          currentDMExpiry = activeConversation.disappearing_seconds;
+          currentDMBlockedByMe = activeConversation.blocked_by_me;
+          currentDMBlockedMe = activeConversation.blocked_me;
+          $("dmExpirySelect").value = String(currentDMExpiry);
+          updateDMControls();
+        }
+      } catch (err) { notice("homeNotice", err.message); }
+    }
+
+    async function loadBlockedUsers() {
+      try {
+        const activeToken = token;
+        const users = await api("/api/users/blocks");
+        if (token !== activeToken) return;
+        blockedUsernames.clear();
+        users.forEach(user => blockedUsernames.add(user));
+        renderBlockedUsers();
+        renderMembers();
+      } catch (err) { notice("homeNotice", err.message); }
+    }
+
+    function renderBlockedUsers() {
+      const list = $("blockedList");
+      list.replaceChildren();
+      $("blockedUsersSection").classList.toggle("hidden", blockedUsernames.size === 0);
+      blockedUsernames.forEach(peerUsername => {
+        const row = document.createElement("div");
+        row.className = "blocked-user-row";
+        const label = document.createElement("span");
+        label.textContent = peerUsername;
+        const unblock = document.createElement("button");
+        unblock.type = "button";
+        unblock.textContent = "Unblock";
+        unblock.onclick = () => setUserBlock(peerUsername, false);
+        row.append(label, unblock);
+        list.append(row);
+      });
+    }
+
+    function renderDirectMessages() {
+      $("directList").replaceChildren();
+      directConversations.forEach(conversation => {
+        const button = document.createElement("button");
+        button.className = "channel dm-channel" + (currentChatType === "dm" && conversation.id === currentDMId ? " active" : "");
+        const peer = document.createElement("span");
+        peer.className = "dm-peer-label";
+        peer.textContent = "◉  " + conversation.peer_username;
+        const status = document.createElement("small");
+        status.className = "presence-label " + (onlineUsers.includes(conversation.peer_username) ? "online" : "offline");
+        const dot = document.createElement("span");
+        dot.className = "status-dot";
+        status.append(dot, document.createTextNode(onlineUsers.includes(conversation.peer_username) ? "Online" : "Offline"));
+        button.append(peer, status);
+        button.onclick = () => openDirectConversation(
+          conversation.id, conversation.peer_username, conversation.disappearing_seconds,
+          conversation.blocked_by_me, conversation.blocked_me
+        );
+        $("directList").append(button);
+      });
+    }
+
+    function updatePresence(users) {
+      onlineUsers = Array.isArray(users) ? users : [];
+      const selfOnline = onlineUsers.includes(username);
+      const accountStatus = $("accountStatus");
+      accountStatus.className = "presence-label " + (selfOnline ? "online" : "offline");
+      accountStatus.lastChild.textContent = selfOnline ? "Online" : "Offline";
+      renderMembers();
+      renderDirectMessages();
+    }
+
+    function schedulePresenceReconnect() {
+      if (!token || presenceReconnectTimer) return;
+      presenceReconnectTimer = setTimeout(() => {
+        presenceReconnectTimer = null;
+        connectPresenceSocket();
+      }, 3000);
+    }
+
+    function stopPresenceSocket() {
+      presenceGeneration++;
+      clearTimeout(presenceReconnectTimer);
+      presenceReconnectTimer = null;
+      presenceConnectPromise = null;
+      const activeSocket = presenceSocket;
+      presenceSocket = null;
+      if (activeSocket) activeSocket.close();
+    }
+
+    function connectPresenceSocket() {
+      if (!token || (presenceSocket && presenceSocket.readyState < WebSocket.CLOSING)) return Promise.resolve();
+      if (presenceConnectPromise) return presenceConnectPromise;
+      const generation = presenceGeneration;
+      presenceConnectPromise = (async () => {
+        const ticket = await api("/api/presence/ws-ticket");
+        if (!token || generation !== presenceGeneration) return;
+        const scheme = location.protocol === "https:" ? "wss:" : "ws:";
+        const activeSocket = new WebSocket(scheme + "//" + location.host + "/ws?ticket=" + encodeURIComponent(ticket.ticket));
+        presenceSocket = activeSocket;
+        activeSocket.onmessage = event => {
+          if (generation !== presenceGeneration) return;
+          const data = JSON.parse(event.data);
+          if (data.type === "presence:list" || data.type === "presence:global")
+            updatePresence(data.payload);
+        };
+        activeSocket.onclose = () => {
+          if (presenceSocket !== activeSocket || generation !== presenceGeneration) return;
+          presenceSocket = null;
+          updatePresence(onlineUsers.filter(user => user !== username));
+          schedulePresenceReconnect();
+        };
+      })().catch(err => {
+        if (token && generation === presenceGeneration) {
+          notice("homeNotice", err.message);
+          schedulePresenceReconnect();
+        }
+      }).finally(() => {
+        if (generation === presenceGeneration) presenceConnectPromise = null;
+      });
+      return presenceConnectPromise;
+    }
+
+    async function startDirectConversation() {
+      const peer = await openInputModal({
+        title: "Start a direct message",
+        label: "Username",
+        placeholder: "Enter the exact username",
+        submitLabel: "Start chat"
+      });
+      if (!peer) return;
+      try {
+        const conversation = await api("/api/dms/start", "POST", { username: peer.trim() });
+        await loadDirectMessages();
+        await openDirectConversation(
+          conversation.id, conversation.peer_username, conversation.disappearing_seconds || 0,
+          conversation.blocked_by_me, conversation.blocked_me
+        );
+      } catch (err) { notice("homeNotice", err.message); }
+    }
+    $("newDMButton").onclick = startDirectConversation;
+
+    function disappearingLabel(seconds) {
+      return ({ 86400: "24 hours", 604800: "7 days", 7776000: "90 days" })[seconds] || "";
+    }
+
+    function disappearingDescription(seconds) {
+      return seconds
+        ? "New messages disappear after " + disappearingLabel(seconds)
+        : "New messages do not disappear";
+    }
+
+    function updateDMControls() {
+      const inDM = currentChatType === "dm" && Boolean(currentDMId);
+      const blocked = currentDMBlockedByMe || currentDMBlockedMe;
+      $("dmBlockButton").classList.toggle("hidden", !inDM);
+      $("dmReportButton").classList.toggle("hidden", !inDM);
+      $("dmBlockButton").textContent = currentDMBlockedByMe ? "Unblock" : "Block";
+      $("dmBlockButton").title = currentDMBlockedMe
+        ? "You cannot message this user while they have you blocked"
+        : currentDMBlockedByMe ? "Unblock this user" : "Block this user";
+      $("messageInput").disabled = blocked;
+      $("attachmentButton").disabled = blocked;
+      $("mediaButton").disabled = blocked;
+      $("messageInput").placeholder = blocked
+        ? currentDMBlockedByMe ? "You blocked this user" : "This user blocked you"
+        : inDM ? "Message " + currentDMUsername : "Message #" + currentRoomName;
+      syncSendButton();
+    }
+
+    async function setUserBlock(peerUsername, blocked) {
+      const conversationID = currentDMId;
+      if (blocked && !confirm("Block " + peerUsername + " from sending you direct messages?")) return;
+      try {
+        await api("/api/users/block", "POST", {
+          username: peerUsername, blocked
+        });
+        if (blocked) blockedUsernames.add(peerUsername);
+        else blockedUsernames.delete(peerUsername);
+        renderBlockedUsers();
+        const conversation = directConversations.find(item => item.id === conversationID);
+        if (conversation && conversation.peer_username === peerUsername)
+          conversation.blocked_by_me = blocked;
+        if (currentDMUsername === peerUsername) {
+          currentDMBlockedByMe = blocked;
+          updateDMControls();
+        }
+        renderMembers();
+        await loadDirectMessages();
+        notice("chatNotice", blocked
+          ? "User blocked from direct messages. Existing history and room messages remain visible."
+          : "User unblocked.");
+      } catch (err) { notice("chatNotice", err.message); }
+    }
+
+    async function reportUser(peerUsername) {
+      const reason = await openInputModal({
+        title: "Report " + peerUsername,
+        label: "Reason",
+        placeholder: "Describe the concern (5–500 characters)",
+        submitLabel: "Submit report",
+        description: "Your report is sent to the app administrator. Encrypted message contents are not included.",
+        maxLength: 500
+      });
+      if (!reason) return;
+      try {
+        await api("/api/users/report", "POST", { username: peerUsername, reason });
+        notice("chatNotice", "Report submitted to the app administrator.");
+      } catch (err) { notice("chatNotice", err.message); }
+    }
+
+    $("dmBlockButton").onclick = () => setUserBlock(currentDMUsername, !currentDMBlockedByMe);
+    $("dmReportButton").onclick = () => reportUser(currentDMUsername);
+
+    $("dmExpirySelect").onchange = async () => {
+      const conversationID = currentDMId;
+      const previous = currentDMExpiry;
+      const next = Number($("dmExpirySelect").value);
+      try {
+        const result = await api("/api/dms/settings", "PUT", {
+          conversation_id: conversationID,
+          disappearing_seconds: next
+        });
+        const conversation = directConversations.find(item => item.id === conversationID);
+        if (conversation) conversation.disappearing_seconds = result.disappearing_seconds;
+        if (currentDMId === conversationID) {
+          currentDMExpiry = result.disappearing_seconds;
+          $("roomCodeLabel").textContent = "Private direct message · " +
+            disappearingDescription(currentDMExpiry);
+        }
+      } catch (err) {
+        if (currentDMId === conversationID) $("dmExpirySelect").value = String(previous);
+        notice("chatNotice", err.message);
+      }
+    };
+
+    async function openDirectConversation(
+      id, peerUsername, disappearingSeconds = 0, blockedByMe = false, blockedMe = false
+    ) {
+      const generation = ++chatOpenGeneration;
+      stopDMRecording(true);
+      if (socket) socket.close();
+      socket = null;
+      currentChatType = "dm";
+      currentRoom = "";
+      currentDMId = id;
+      currentDMUsername = peerUsername;
+      currentDMExpiry = disappearingSeconds;
+      currentDMBlockedByMe = blockedByMe;
+      currentDMBlockedMe = blockedMe;
+      latestDMMessageID = 0;
+      oldestMessageID = 0;
+      hasOlderMessages = false;
+      loadingOlderMessages = false;
+      pendingReply = null;
+      decryptedMessages.clear();
+      updateReplyPreview();
+      currentRoomName = peerUsername;
+      currentRole = "";
+      $("membersPanel").classList.add("hidden");
+      $("mobileMembersBtn").classList.add("hidden");
+      $("homeView").classList.add("direct-chat");
+      $("dmExpirySelect").classList.remove("hidden");
+      $("dmExpirySelect").value = String(currentDMExpiry);
+      updateDMControls();
+      $("dmRecordActions").classList.remove("hidden");
+      $("leaveRoomBtn").textContent = "Close";
+      $("leaveRoomBtn").disabled = false;
+      notice("chatNotice", "");
+      $("roomTitle").textContent = peerUsername;
+      $("roomCodeLabel").textContent = "Private direct message · " +
+        disappearingDescription(currentDMExpiry);
+      $("sidebarRoomName").textContent = "Direct messages";
+      $("messageInput").placeholder = "Message " + peerUsername;
+      $("messageInput").value = "";
+      syncSendButton();
+      $("messages").replaceChildren();
+      typingUsers.clear();
+      try {
+        await ensureDMIdentity();
+        if (generation !== chatOpenGeneration) return;
+        const keys = await api("/api/dms/key?dm=" + encodeURIComponent(id));
+        if (generation !== chatOpenGeneration) return;
+        currentDMUsername = keys.peer_username;
+        const ownPublicJWK = JSON.parse(keys.own_public_key);
+        const peerPublicJWK = JSON.parse(keys.peer_public_key);
+        const ownPublicKey = await crypto.subtle.importKey(
+          "jwk", ownPublicJWK, { name: "RSA-OAEP", hash: "SHA-256" }, true, ["encrypt"]
+        );
+        const peerPublicKey = await crypto.subtle.importKey(
+          "jwk", peerPublicJWK, { name: "RSA-OAEP", hash: "SHA-256" }, true, ["encrypt"]
+        );
+        if (generation !== chatOpenGeneration) return;
+        directEncryptionKeys = {
+          [username]: ownPublicKey,
+          [currentDMUsername]: peerPublicKey
+        };
+        await loadHistory();
+        if (generation !== chatOpenGeneration) return;
+        await loadDirectMessages();
+        if (generation !== chatOpenGeneration) return;
+        const ticket = await api("/api/dms/ws-ticket?id=" + encodeURIComponent(id));
+        if (generation !== chatOpenGeneration) return;
+        const scheme = location.protocol === "https:" ? "wss:" : "ws:";
+        socket = new WebSocket(scheme + "//" + location.host + "/ws?ticket=" + encodeURIComponent(ticket.ticket));
+        connectSocketEvents();
+      } catch (err) {
+        notice("chatNotice", err.message);
+      }
+    }
+
+    function fromB64(value) { return Uint8Array.from(atob(value), c => c.charCodeAt(0)); }
+    function toB64(value) {
+      const bytes = new Uint8Array(value);
+      let binary = "";
+      for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
+      }
+      return btoa(binary);
+    }
+    async function deriveRoomKey(passphrase, saltB64) {
+      const baseKey = await crypto.subtle.importKey("raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+      return crypto.subtle.deriveKey(
+        { name: "PBKDF2", hash: "SHA-256", salt: fromB64(saltB64), iterations: 250000 },
+        baseKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
+      );
+    }
+    async function encryptMessage(text) {
+      const nonce = crypto.getRandomValues(new Uint8Array(12));
+      const ciphertext = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: nonce, additionalData: new TextEncoder().encode(currentRoom) },
+        roomCryptoKey, new TextEncoder().encode(text)
+      );
+      return JSON.stringify({ v: 1, alg: "AES-256-GCM", aad: currentRoom, nonce: toB64(nonce), ciphertext: toB64(ciphertext) });
+    }
+    async function decryptMessage(payload) {
+      try {
+        const envelope = JSON.parse(payload);
+        if (envelope.v !== 1 || envelope.alg !== "AES-256-GCM") return "[Unsupported encrypted message]";
+        const plaintext = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: fromB64(envelope.nonce), additionalData: new TextEncoder().encode(envelope.aad || currentRoom) },
+          roomCryptoKey, fromB64(envelope.ciphertext)
+        );
+        return new TextDecoder().decode(plaintext);
+      } catch (_) { return "[Unable to decrypt]"; }
+    }
+
+    async function encryptDirectBytes(bytes) {
+      const keyBytes = crypto.getRandomValues(new Uint8Array(32));
+      const aesKey = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["encrypt"]);
+      const nonce = crypto.getRandomValues(new Uint8Array(12));
+      const ciphertext = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: nonce, additionalData: new TextEncoder().encode("dm:" + currentDMId) },
+        aesKey, bytes
+      );
+      const [ownWrapped, peerWrapped] = await Promise.all([
+        crypto.subtle.encrypt({ name: "RSA-OAEP" }, directEncryptionKeys[username], keyBytes),
+        crypto.subtle.encrypt({ name: "RSA-OAEP" }, directEncryptionKeys[currentDMUsername], keyBytes)
+      ]);
+      return {
+        ciphertext: new Uint8Array(ciphertext),
+        envelope: {
+          v: 2, alg: "AES-256-GCM+RSA-OAEP-256", nonce: toB64(nonce),
+          keys: { [username]: toB64(ownWrapped), [currentDMUsername]: toB64(peerWrapped) }
+        }
+      };
+    }
+
+    async function decryptDirectBytes(envelope, ciphertext) {
+      const wrapped = envelope.keys && envelope.keys[username];
+      if (!wrapped || !dmPrivateKey) throw new Error("This device does not have the key for this direct message.");
+      const rawKey = await crypto.subtle.decrypt({ name: "RSA-OAEP" }, dmPrivateKey, fromB64(wrapped));
+      const aesKey = await crypto.subtle.importKey("raw", rawKey, { name: "AES-GCM" }, false, ["decrypt"]);
+      return crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: fromB64(envelope.nonce), additionalData: new TextEncoder().encode("dm:" + currentDMId) },
+        aesKey, ciphertext
+      );
+    }
+
+    async function encryptDirectMessage(text) {
+      const result = await encryptDirectBytes(new TextEncoder().encode(text));
+      return JSON.stringify({ ...result.envelope, ciphertext: toB64(result.ciphertext) });
+    }
+
+    async function decryptDirectMessage(payload) {
+      try {
+        const envelope = JSON.parse(payload);
+        if (envelope.v !== 2 || envelope.alg !== "AES-256-GCM+RSA-OAEP-256") return "[Unsupported encrypted message]";
+        const plaintext = await decryptDirectBytes(envelope, fromB64(envelope.ciphertext));
+        return new TextDecoder().decode(plaintext);
+      } catch (_) { return "[Unable to decrypt]"; }
+    }
+
+    function encryptCurrentMessage(text) {
+      return currentChatType === "dm" ? encryptDirectMessage(text) : encryptMessage(text);
+    }
+
+    function decryptCurrentMessage(text) {
+      return currentChatType === "dm" ? decryptDirectMessage(text) : decryptMessage(text);
+    }
+
+    function connectSocketEvents() {
+      const activeSocket = socket;
+      activeSocket.onopen = syncSendButton;
+      activeSocket.onmessage = event => {
+        if (socket !== activeSocket) return;
+        const data = JSON.parse(event.data);
+        if (data.type === "message:new") {
+          addMessage(data.payload);
+          if (currentChatType === "dm" && data.payload.username !== username) {
+            markDirectMessagesDelivered(currentDMId, data.payload.id);
+            markDirectMessagesRead(currentDMId, data.payload.id);
+          }
+        }
+        if (data.type === "presence:update" || data.type === "presence:list" || data.type === "presence:global")
+          updatePresence(data.payload);
+        if (data.type === "typing:start") { typingUsers.add(data.payload.username); renderTyping(); }
+        if (data.type === "typing:stop") { typingUsers.delete(data.payload.username); renderTyping(); }
+        if (data.type === "message:deleted") {
+          document.querySelector('[data-message-id="' + data.payload.id + '"]')?.remove();
+          decryptedMessages.delete(data.payload.id);
+          document.querySelectorAll('.reply-quote[data-reply-to="' + data.payload.id + '"] span')
+            .forEach(preview => { preview.textContent = "Original message unavailable"; });
+        }
+        if (data.type === "reaction:update") updateMessageReactions(data.payload);
+        if (data.type === "message:updated") updateMessageContent(data.payload);
+        if (data.type === "message:error") notice("chatNotice", data.payload.error);
+        if (data.type === "receipts:delivery") updateDeliveryReceipts(data.payload);
+        if (data.type === "receipts:update") updateReadReceipts(data.payload);
+        if (data.type === "block:update") updateBlockState(data.payload);
+        if (data.type === "member:kicked" && data.payload.username === username) {
+          alert("You were removed from " + currentRoomName + ".");
+          backToHome();
+        }
+      };
+      activeSocket.onclose = () => {
+        if (socket === activeSocket) {
+          notice("chatNotice", "Connection closed.");
+          syncSendButton();
+        }
+      };
+      activeSocket.onerror = () => {
+        if (socket === activeSocket) notice("chatNotice", "WebSocket connection error.");
+      };
+    }
+
+    async function openRoom(code, name, role, passphrase, salt) {
+      const generation = ++chatOpenGeneration;
+      stopDMRecording(true);
+      if (socket) socket.close();
+      socket = null;
+      currentChatType = "room";
+      currentDMId = 0;
+      currentDMUsername = "";
+      currentDMExpiry = 0;
+      currentDMBlockedByMe = false;
+      currentDMBlockedMe = false;
+      latestDMMessageID = 0;
+      oldestMessageID = 0;
+      hasOlderMessages = false;
+      loadingOlderMessages = false;
+      pendingReply = null;
+      decryptedMessages.clear();
+      updateReplyPreview();
+      directEncryptionKeys = {};
+      $("membersPanel").classList.remove("hidden");
+      $("mobileMembersBtn").classList.remove("hidden");
+      $("homeView").classList.remove("direct-chat");
+      $("dmExpirySelect").classList.add("hidden");
+      $("dmRecordActions").classList.add("hidden");
+      $("dmBlockButton").classList.add("hidden");
+      $("dmReportButton").classList.add("hidden");
+      $("messageInput").disabled = false;
+      $("attachmentButton").disabled = false;
+      $("mediaButton").disabled = false;
+      $("leaveRoomBtn").textContent = "Leave";
+      const credentials = roomCredentials.get(code);
+      if (passphrase) roomPassphrase = passphrase;
+      else if (credentials?.passphrase) roomPassphrase = credentials.passphrase;
+      else {
+        const entered = prompt("Enter the password for #" + (name || "this room"));
+        if (!entered) return;
+        roomPassphrase = entered;
+      }
+      if (salt) roomSalt = salt;
+      else if (credentials?.salt) roomSalt = credentials.salt;
+      else roomSalt = "";
+      currentRoom = code;
+      currentRoomName = name || "Chat Room";
+      currentRole = role;
+      $("leaveRoomBtn").disabled = false;
+      notice("chatNotice", "");
+      if (!roomSalt && roomPassphrase) {
+        try {
+          const result = await api("/api/rooms/join", "POST", { room_code: code, password: roomPassphrase });
+          if (generation !== chatOpenGeneration) return;
+          roomSalt = result.e2ee_salt || "";
+          currentRole = result.role;
+        } catch (_) {}
+      }
+      if (generation !== chatOpenGeneration) return;
+      roomCredentials.set(code, { passphrase: roomPassphrase, salt: roomSalt });
+      if (!roomSalt) { notice("chatNotice", "Encryption metadata is unavailable."); return; }
+      const derivedRoomKey = await deriveRoomKey(roomPassphrase, roomSalt);
+      if (generation !== chatOpenGeneration) return;
+      roomCryptoKey = derivedRoomKey;
+      $("roomTitle").textContent = currentRoomName;
+      $("roomCodeLabel").textContent = "Room code: " + code;
+      $("sidebarRoomName").textContent = currentRoomName;
+      $("messageInput").placeholder = "Message #" + currentRoomName;
+      $("messageInput").value = "";
+      syncSendButton();
+      $("messages").replaceChildren();
+      typingUsers.clear();
+      await loadHistory();
+      if (generation !== chatOpenGeneration) return;
+      await loadMembers();
+      if (generation !== chatOpenGeneration) return;
+      await loadRooms();
+      if (generation !== chatOpenGeneration) return;
+
+      const ticket = await api("/api/ws-ticket?room=" + encodeURIComponent(currentRoom));
+      if (generation !== chatOpenGeneration) return;
+      const scheme = location.protocol === "https:" ? "wss:" : "ws:";
+      socket = new WebSocket(scheme + "//" + location.host + "/ws?ticket=" + encodeURIComponent(ticket.ticket));
+      connectSocketEvents();
+    }
+
+    function updateHistoryButton() {
+      let button = $("loadOlderButton");
+      if (!button) {
+        button = document.createElement("button");
+        button.id = "loadOlderButton";
+        button.className = "secondary load-older";
+        button.textContent = "Load earlier messages";
+        button.onclick = () => loadHistory({ older: true });
+        $("messages").prepend(button);
+      }
+      button.hidden = !hasOlderMessages;
+      button.disabled = loadingOlderMessages;
+    }
+
+    async function loadHistory({ older = false } = {}) {
+      if (older && (!hasOlderMessages || loadingOlderMessages)) return;
+      const beforeID = older ? oldestMessageID : 0;
+      const previousScrollHeight = $("messages").scrollHeight;
+      const previousScrollTop = $("messages").scrollTop;
+      const generation = chatOpenGeneration;
+      const chatType = currentChatType;
+      const chatID = currentChatType === "dm" ? currentDMId : currentRoom;
+      const basePath = currentChatType === "dm"
+        ? "/api/dms/history?id=" + encodeURIComponent(currentDMId)
+        : "/api/rooms/history?room=" + encodeURIComponent(currentRoom);
+      if (older) {
+        loadingOlderMessages = true;
+        updateHistoryButton();
+      }
+      try {
+        const page = await api(basePath + "&before_id=" + beforeID + "&limit=100");
+        if (generation !== chatOpenGeneration) return;
+        const messages = page.messages || [];
+        if (messages.length) {
+          oldestMessageID = oldestMessageID
+            ? Math.min(oldestMessageID, messages[0].id)
+            : messages[0].id;
+          if (chatType === "dm")
+            latestDMMessageID = Math.max(latestDMMessageID, messages[messages.length - 1].id);
+          const orderedMessages = older ? messages.slice().reverse() : messages;
+          for (const message of orderedMessages) {
+            if (generation !== chatOpenGeneration) return;
+            await addMessage(message, older);
+          }
+          if (chatType === "dm") {
+            const latest = messages[messages.length - 1].id;
+            await markDirectMessagesDelivered(chatID, latest);
+            if (!document.hidden) await markDirectMessagesRead(chatID, latestDMMessageID);
+          }
+        }
+        hasOlderMessages = Boolean(page.has_more);
+        updateHistoryButton();
+        if (older)
+          $("messages").scrollTop = previousScrollTop + ($("messages").scrollHeight - previousScrollHeight);
+        else
+          $("messages").scrollTop = $("messages").scrollHeight;
+      } catch (err) {
+        if (generation === chatOpenGeneration) notice("chatNotice", err.message);
+      } finally {
+        if (generation === chatOpenGeneration) {
+          loadingOlderMessages = false;
+          updateHistoryButton();
+        }
+      }
+    }
+
+    async function addMessage(m, prepend = false) {
+      const generation = chatOpenGeneration;
+      if (document.querySelector('[data-message-id="' + m.id + '"]')) return;
+      const row = document.createElement("article");
+      row.className = "message";
+      row.dataset.messageId = m.id;
+      row.id = "message-" + m.id;
+      const avatar = document.createElement("span");
+      avatar.className = "message-avatar";
+      avatar.textContent = m.username.slice(0, 2);
+      const content = document.createElement("div");
+      const meta = document.createElement("div");
+      meta.className = "message-meta";
+      meta.innerHTML = "<strong></strong><time></time>";
+      meta.querySelector("strong").textContent = m.username;
+      meta.querySelector("time").textContent = new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      const body = document.createElement("div");
+      body.className = "message-body";
+      const plaintext = await decryptCurrentMessage(m.text);
+      if (generation !== chatOpenGeneration) return;
+      decryptedMessages.set(m.id, { username: m.username, plaintext });
+      if (currentChatType === "dm") latestDMMessageID = Math.max(latestDMMessageID, m.id);
+      await renderMessageContent(body, plaintext);
+      if (generation !== chatOpenGeneration) return;
+      content.append(meta, body);
+      if (currentChatType === "dm" && m.username === username) {
+        const receipt = document.createElement("span");
+        receipt.id = "read-receipt-" + m.id;
+        receipt.className = "dm-read-receipt" +
+          (m.read ? " read" : m.delivered ? " delivered" : "");
+        receipt.textContent = m.read ? "✓✓ Read" : m.delivered ? "✓✓ Delivered" : "✓ Sent";
+        receipt.title = m.read ? "Read by " + currentDMUsername : m.delivered ? "Delivered" : "Sent";
+        meta.append(receipt);
+      }
+      if (m.edited) {
+        const edited = document.createElement("span");
+        edited.className = "message-edited";
+        edited.textContent = "(edited)";
+        meta.append(edited);
+      }
+      const reactions = document.createElement("div");
+      reactions.className = "message-reactions";
+      renderReactions(m.id, m.reactions || [], reactions);
+      content.append(reactions);
+      row.append(avatar, content);
+      const canDelete = currentChatType === "dm" ? m.username === username :
+        m.username === username || currentRole === "owner" || currentRole === "maintainer";
+      const canEdit = m.username === username && getEditableMessageText(plaintext) !== null;
+      const actions = document.createElement("div");
+      actions.className = "message-actions";
+      const reply = document.createElement("button");
+      reply.className = "reply-message";
+      reply.textContent = "↩";
+      reply.title = "Reply";
+      reply.onclick = () => selectReply(m, plaintext);
+      actions.append(reply);
+      if (canEdit) {
+        const edit = document.createElement("button");
+        edit.className = "edit-message";
+        edit.textContent = "✎";
+        edit.title = "Edit message";
+        edit.onclick = () => editMessage(m, plaintext);
+        actions.append(edit);
+      }
+      if (canDelete) {
+        const del = document.createElement("button");
+        del.className = "delete-message";
+        del.textContent = "×";
+        del.title = "Delete message";
+        del.onclick = () => deleteMessage(m.id);
+        actions.append(del);
+      }
+      row.append(actions);
+      const olderButton = $("loadOlderButton");
+      if (prepend && olderButton)
+        $("messages").insertBefore(row, olderButton.nextSibling);
+      else
+        $("messages").append(row);
+      if (!prepend) $("messages").scrollTop = $("messages").scrollHeight;
+    }
+
+    function safeGifURL(value) {
+      try {
+        const url = new URL(value);
+        return url.protocol === "https:" &&
+          ["media.tenor.com", "media.giphy.com", "i.giphy.com"].includes(url.hostname.toLowerCase()) &&
+          url.pathname.toLowerCase().endsWith(".gif") ? url.href : "";
+      } catch (_) { return ""; }
+    }
+
+    function getReplyPreviewText(plaintext) {
+      try {
+        const payload = JSON.parse(plaintext);
+        if (payload.kind === "voice-note") return "Voice message";
+        if (payload.kind === "video-note") return "Video message";
+        if (payload.kind === "gif") return "GIF";
+        if (payload.kind === "attachment") return "📎 " + (payload.filename || "Attachment");
+        if (payload.kind === "reply") return payload.text || "Reply";
+      } catch (_) {}
+      return String(plaintext).slice(0, 120);
+    }
+
+    function renderReplyQuote(container, reply) {
+      if (!reply || !reply.id) return;
+      const quote = document.createElement("button");
+      quote.type = "button";
+      quote.className = "reply-quote";
+      quote.dataset.replyTo = reply.id;
+      const author = document.createElement("strong");
+      author.textContent = "↪ " + (reply.username || "Message");
+      const preview = document.createElement("span");
+      const original = decryptedMessages.get(reply.id);
+      preview.textContent = original
+        ? getReplyPreviewText(original.plaintext)
+        : "Original message unavailable";
+      quote.append(author, preview);
+      quote.onclick = () => {
+        const target = document.getElementById("message-" + reply.id);
+        if (!target) return;
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.classList.add("reply-highlight");
+        setTimeout(() => target.classList.remove("reply-highlight"), 1200);
+      };
+      container.append(quote);
+    }
+
+    async function loadDecryptedAttachment(payload) {
+      const query = currentChatType === "dm"
+        ? "?dm=" + encodeURIComponent(currentDMId)
+        : "?room=" + encodeURIComponent(currentRoom);
+      const response = await fetch("/api/attachments" + query + "&id=" + encodeURIComponent(payload.attachment_id), {
+        headers: { Authorization: "Bearer " + token }
+      });
+      if (!response.ok) throw new Error("Could not load attachment");
+      const ciphertext = new Uint8Array(await response.arrayBuffer());
+      let plaintextBytes;
+      if (currentChatType === "dm") {
+        plaintextBytes = await decryptDirectBytes(payload, ciphertext);
+      } else {
+        plaintextBytes = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: fromB64(payload.nonce),
+            additionalData: new TextEncoder().encode("attachment:" + currentRoom) },
+          roomCryptoKey, ciphertext
+        );
+      }
+      return new Blob([plaintextBytes], { type: payload.mime || "application/octet-stream" });
+    }
+
+    async function renderMessageContent(container, plaintext) {
+      let payload;
+      try { payload = JSON.parse(plaintext); } catch (_) {}
+      if (payload && payload.kind === "reply") {
+        renderReplyQuote(container, payload.reply_to);
+        await renderMessageContent(container, payload.text || "");
+        return;
+      }
+      if (payload && ["attachment", "gif", "voice-note", "video-note"].includes(payload.kind)) {
+        renderReplyQuote(container, payload.reply_to);
+        const card = document.createElement("div");
+        card.className = "attachment-card";
+        const button = document.createElement("button");
+        button.className = "attachment-link";
+        const isVoiceNote = payload.kind === "voice-note";
+        const isVideoNote = payload.kind === "video-note";
+        const isGIF = payload.kind === "gif";
+        button.textContent = isVoiceNote
+          ? "▶ Play voice message"
+          : isVideoNote
+            ? "▶ Play video message"
+            : isGIF
+              ? "Loading GIF…"
+            : "📎 " + (payload.filename || "Attachment") +
+              " · " + Math.max(1, Math.round((payload.size || 0) / 1024)) + " KB";
+        const image = document.createElement("img");
+        image.className = isGIF ? "gif-preview" : "attachment-preview hidden";
+        image.alt = isGIF ? (payload.attribution && payload.attribution.title || "Shared GIF") : "";
+        const player = isVoiceNote || isVideoNote
+          ? document.createElement(isVoiceNote ? "audio" : "video")
+          : null;
+        if (player) {
+          player.className = "note-player hidden";
+          player.controls = true;
+          player.preload = "metadata";
+          if (isVideoNote) player.playsInline = true;
+        }
+        let objectURL = "";
+        const loadPreview = async () => {
+          if (!objectURL) {
+            const blob = await loadDecryptedAttachment(payload);
+            objectURL = URL.createObjectURL(blob);
+          }
+          image.src = objectURL;
+          image.classList.remove("hidden");
+        };
+        button.onclick = async () => {
+          try {
+            if (!objectURL) {
+              const blob = await loadDecryptedAttachment(payload);
+              objectURL = URL.createObjectURL(blob);
+              if (player) {
+                player.src = objectURL;
+                player.classList.remove("hidden");
+                button.remove();
+                return;
+              }
+              if (["image/png", "image/jpeg", "image/gif", "image/webp"].includes(payload.mime)) {
+                image.src = objectURL;
+                image.classList.remove("hidden");
+                card.insertBefore(image, button);
+              }
+            }
+            const link = document.createElement("a");
+            link.href = objectURL;
+            link.download = payload.filename || "attachment";
+            link.click();
+          } catch (err) { notice("chatNotice", err.message); }
+        };
+        if (player) card.append(player);
+        if (isGIF) {
+          button.textContent = "GIF is loading…";
+          button.onclick = async () => {
+            button.disabled = true;
+            try {
+              await loadPreview();
+              button.remove();
+            } catch (err) {
+              button.textContent = "Tap to retry GIF";
+              button.disabled = false;
+              notice("chatNotice", err.message);
+            }
+          };
+          card.append(image);
+          const attribution = payload.attribution || {};
+          if (attribution.title) {
+            const credit = document.createElement(attribution.source_url ? "a" : "span");
+            credit.className = "gif-attribution";
+            credit.textContent = (attribution.creator ? attribution.title + " · " + attribution.creator : attribution.title) +
+              " · " + String(attribution.license || "CC0").toUpperCase();
+            if (attribution.source_url) {
+              try {
+                const sourceURL = new URL(attribution.source_url);
+                if (sourceURL.protocol === "https:") {
+                  credit.href = sourceURL.href;
+                  credit.target = "_blank";
+                  credit.rel = "noopener noreferrer";
+                }
+              } catch (_) {}
+            }
+            card.append(credit);
+          }
+          loadPreview().then(() => button.remove()).catch(err => {
+            button.textContent = "Tap to retry GIF";
+            notice("chatNotice", err.message);
+          });
+        }
+        card.append(button);
+        container.append(card);
+        return;
+      }
+      const gifURL = safeGifURL(plaintext);
+      if (gifURL) {
+        const link = document.createElement("a");
+        link.href = gifURL;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        const image = document.createElement("img");
+        image.className = "gif-preview";
+        image.src = gifURL;
+        image.alt = "Shared GIF";
+        link.append(image);
+        container.append(link);
+        return;
+      }
+      container.textContent = plaintext;
+    }
+
+    function renderReactions(messageID, reactions, container) {
+      container.replaceChildren();
+      reactions.forEach(reaction => {
+        const chip = document.createElement("button");
+        chip.className = "reaction-chip" + (reaction.mine ? " mine" : "");
+        chip.textContent = reaction.emoji + " " + reaction.count;
+        chip.title = "Toggle reaction";
+        chip.onclick = () => toggleReaction(messageID, reaction.emoji);
+        container.append(chip);
+      });
+      const add = document.createElement("button");
+      add.className = "reaction-chip";
+      add.textContent = "+";
+      add.title = "Add reaction";
+      add.onclick = () => {
+        const picker = document.createElement("span");
+        picker.className = "reaction-picker";
+        reactionChoices.forEach(emoji => {
+          const option = document.createElement("button");
+          option.type = "button";
+          option.textContent = emoji;
+          option.onclick = () => toggleReaction(messageID, emoji);
+          picker.append(option);
+        });
+        add.replaceWith(picker);
+      };
+      container.append(add);
+    }
+
+    function updateMessageReactions(payload) {
+      const row = document.querySelector('[data-message-id="' + payload.message_id + '"]');
+      const container = row && row.querySelector(".message-reactions");
+      if (container) renderReactions(payload.message_id, payload.reactions || [], container);
+    }
+
+    function selectReply(message, plaintext) {
+      pendingReply = { id: message.id, username: message.username };
+      $("replyPreviewText").textContent = "Replying to " + message.username + " · " +
+        getReplyPreviewText(plaintext);
+      $("replyPreview").classList.remove("hidden");
+      $("messageInput").focus();
+    }
+
+    function updateReplyPreview() {
+      $("replyPreview").classList.toggle("hidden", !pendingReply);
+      if (!pendingReply) $("replyPreviewText").textContent = "";
+    }
+
+    $("cancelReplyButton").onclick = () => {
+      pendingReply = null;
+      updateReplyPreview();
+    };
+
+    async function markDirectMessagesDelivered(conversationID, upToMessageID) {
+      if (currentChatType !== "dm" || currentDMId !== conversationID) return;
+      const generation = chatOpenGeneration;
+      try {
+        await api("/api/dms/delivered", "POST", {
+          conversation_id: conversationID,
+          up_to_message_id: upToMessageID
+        });
+      } catch (err) {
+        if (generation === chatOpenGeneration) notice("chatNotice", err.message);
+      }
+    }
+
+    async function markDirectMessagesRead(conversationID, upToMessageID) {
+      if (document.hidden || currentChatType !== "dm" || currentDMId !== conversationID) return;
+      const generation = chatOpenGeneration;
+      try {
+        await api("/api/dms/read", "POST", {
+          conversation_id: conversationID,
+          up_to_message_id: upToMessageID
+        });
+      } catch (err) {
+        if (generation === chatOpenGeneration) notice("chatNotice", err.message);
+      }
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && currentChatType === "dm" && latestDMMessageID) {
+        markDirectMessagesDelivered(currentDMId, latestDMMessageID);
+        markDirectMessagesRead(currentDMId, latestDMMessageID);
+      }
+    });
+
+    function updateReadReceipts(payload) {
+      (payload.message_ids || []).forEach(id => {
+        const receipt = document.getElementById("read-receipt-" + id);
+        if (!receipt) return;
+        receipt.classList.add("read");
+        receipt.textContent = "✓✓ Read";
+        receipt.title = "Read by " + (payload.reader || currentDMUsername);
+      });
+    }
+
+    function updateDeliveryReceipts(payload) {
+      (payload.message_ids || []).forEach(id => {
+        const receipt = document.getElementById("read-receipt-" + id);
+        if (!receipt || receipt.classList.contains("read")) return;
+        receipt.classList.add("delivered");
+        receipt.textContent = "✓✓ Delivered";
+        receipt.title = "Delivered";
+      });
+    }
+
+    function updateBlockState(payload) {
+      if (!payload || payload.is_blocked === undefined) return;
+      if (payload.blocker === username && payload.blocked === currentDMUsername)
+        currentDMBlockedByMe = payload.is_blocked;
+      if (payload.blocked === username && payload.blocker === currentDMUsername)
+        currentDMBlockedMe = payload.is_blocked;
+      updateDMControls();
+    }
+
+    async function updateMessageContent(message) {
+      const generation = chatOpenGeneration;
+      const row = document.querySelector('[data-message-id="' + message.id + '"]');
+      if (!row) return;
+      const plaintext = await decryptCurrentMessage(message.text);
+      if (generation !== chatOpenGeneration) return;
+      decryptedMessages.set(message.id, { username: message.username, plaintext });
+      const body = row.querySelector(".message-body");
+      body.replaceChildren();
+      await renderMessageContent(body, plaintext);
+      if (generation !== chatOpenGeneration) return;
+      const meta = row.querySelector(".message-meta");
+      let edited = meta.querySelector(".message-edited");
+      if (!edited) {
+        edited = document.createElement("span");
+        edited.className = "message-edited";
+        meta.append(edited);
+      }
+      edited.textContent = "(edited)";
+      const editButton = row.querySelector(".edit-message");
+      if (editButton) editButton.onclick = () => editMessage(message, plaintext);
+    }
+
+    function getEditableMessageText(plaintext) {
+      try {
+        const payload = JSON.parse(plaintext);
+        if (["attachment", "voice-note", "video-note"].includes(payload.kind)) return null;
+        if (payload.kind === "reply") return typeof payload.text === "string" ? payload.text : "";
+      } catch (_) {}
+      return plaintext;
+    }
+
+    async function editMessage(message, plaintext) {
+      const editable = getEditableMessageText(plaintext);
+      if (editable === null) return;
+      const nextText = prompt("Edit message", editable);
+      if (nextText === null) return;
+      if (!nextText.trim() || nextText.length > 4000) {
+        notice("chatNotice", "Messages must contain 1 to 4,000 characters.");
+        return;
+      }
+      const generation = chatOpenGeneration;
+      const chatType = currentChatType;
+      const roomCode = currentRoom;
+      const conversationID = currentDMId;
+      let updatedPlaintext = nextText;
+      try {
+        const payload = JSON.parse(plaintext);
+        if (payload.kind === "reply") {
+          payload.text = nextText;
+          updatedPlaintext = JSON.stringify(payload);
+        }
+      } catch (_) {}
+      try {
+        const encrypted = chatType === "dm"
+          ? await encryptDirectMessage(updatedPlaintext)
+          : await encryptMessage(updatedPlaintext);
+        if (generation !== chatOpenGeneration) return;
+        await api("/api/messages/edit", "POST", {
+          room_code: chatType === "room" ? roomCode : "",
+          conversation_id: chatType === "dm" ? conversationID : 0,
+          message_id: message.id,
+          text: encrypted
+        });
+      } catch (err) { notice("chatNotice", err.message || "Could not edit message."); }
+    }
+
+    async function toggleReaction(messageID, emoji) {
+      try {
+        const result = await api("/api/messages/reactions", "POST", { message_id: messageID, emoji });
+        updateMessageReactions(result);
+      } catch (err) { notice("chatNotice", err.message); }
+    }
+
+    async function deleteMessage(id) {
+      if (!confirm("Delete this message?")) return;
+      try {
+        if (currentChatType === "dm") {
+          await api("/api/dms/message/delete", "POST", { conversation_id: currentDMId, message_id: id });
+        } else {
+          await api("/api/rooms/message/delete", "POST", { room_code: currentRoom, message_id: id });
+        }
+      } catch (err) { notice("chatNotice", err.message); }
+    }
+
+    async function loadMembers() {
+      roomMembers = await api("/api/rooms/members?room=" + encodeURIComponent(currentRoom));
+      renderMembers();
+    }
+
+    function renderMembers() {
+      $("members").replaceChildren();
+      $("memberCount").textContent = roomMembers.length;
+      const groups = [
+        ["Owners", "owner"], ["Maintainers", "maintainer"], ["Members", "member"]
+      ];
+      groups.forEach(([title, role]) => {
+        const list = roomMembers.filter(m => m.role === role);
+        if (!list.length) return;
+        const group = document.createElement("div");
+        group.className = "member-group";
+        const heading = document.createElement("div");
+        heading.className = "sidebar-section-title";
+        heading.textContent = title + " — " + list.length;
+        group.append(heading);
+        list.forEach(m => {
+          const row = document.createElement("div");
+          row.className = "member-row";
+          const avatar = document.createElement("span");
+          avatar.className = "avatar";
+          avatar.textContent = m.username.slice(0, 2);
+          const name = document.createElement("div");
+          name.className = "member-name";
+          name.innerHTML = "<strong></strong>";
+          name.querySelector("strong").textContent = m.username;
+          const status = document.createElement("small");
+          const isOnline = onlineUsers.includes(m.username);
+          status.className = "presence-label " + (isOnline ? "online" : "offline");
+          const dot = document.createElement("span");
+          dot.className = "status-dot";
+          status.append(dot, document.createTextNode(isOnline ? "Online" : "Offline"));
+          name.append(status);
+          row.append(avatar, name);
+
+          if (currentRole === "owner" && m.username !== username && m.role !== "owner") {
+            const actions = document.createElement("div");
+            actions.className = "member-actions";
+            const select = document.createElement("select");
+            ["member", "maintainer"].forEach(roleValue => {
+              const option = document.createElement("option");
+              option.value = roleValue;
+              option.textContent = roleValue[0].toUpperCase() + roleValue.slice(1);
+              option.selected = m.role === roleValue;
+              select.append(option);
+            });
+            select.onchange = () => changeRole(m.username, select.value);
+            actions.append(select);
+            const kick = document.createElement("button");
+            kick.className = "kick";
+            kick.textContent = "×";
+            kick.title = "Remove " + m.username;
+            kick.onclick = () => kickMember(m.username);
+            actions.append(kick);
+            row.append(actions);
+          } else if ((currentRole === "owner" || currentRole === "maintainer") &&
+                     m.username !== username && m.role !== "owner" &&
+                     !(m.role === "maintainer" && currentRole !== "owner")) {
+            const kick = document.createElement("button");
+            kick.className = "kick";
+            kick.textContent = "×";
+            kick.title = "Remove " + m.username;
+            kick.onclick = () => kickMember(m.username);
+            row.append(kick);
+          }
+          if (m.username !== username) {
+            const safety = document.createElement("div");
+            safety.className = "member-safety-actions";
+            const blocked = blockedUsernames.has(m.username);
+            const block = document.createElement("button");
+            block.type = "button";
+            block.textContent = blocked ? "⊘" : "⊕";
+            block.title = blocked ? "Unblock direct messages" : "Block direct messages";
+            block.onclick = () => setUserBlock(m.username, !blocked);
+            safety.append(block);
+            const report = document.createElement("button");
+            report.type = "button";
+            report.textContent = "⚑";
+            report.title = "Report user";
+            report.onclick = () => reportUser(m.username);
+            safety.append(report);
+            row.append(safety);
+          }
+          group.append(row);
+        });
+        $("members").append(group);
+      });
+    }
+
+    async function changeRole(target, role) {
+      try {
+        await api("/api/rooms/role", "POST", { room_code: currentRoom, username: target, role });
+        await loadMembers();
+      } catch (err) { alert(err.message); await loadMembers(); }
+    }
+
+    async function kickMember(target) {
+      if (!confirm("Remove " + target + " from this room?")) return;
+      try {
+        await api("/api/rooms/kick", "POST", { room_code: currentRoom, username: target });
+        await loadMembers();
+      } catch (err) { alert(err.message); }
+    }
+
+    function renderTyping() {
+      const names = [...typingUsers].filter(x => x !== username);
+      $("typing").textContent = names.length ? names.join(", ") + " is typing…" : "";
+    }
+
+    async function sendChatText(text) {
+      if (currentChatType === "dm" && (currentDMBlockedByMe || currentDMBlockedMe))
+        throw new Error("You cannot send messages while either user has blocked the other.");
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        throw new Error("Chat is still connecting. Try again in a moment.");
+      }
+      const encrypted = await encryptCurrentMessage(text);
+      socket.send(JSON.stringify({ type: "message", text: encrypted }));
+      socket.send(JSON.stringify({ type: "typing:stop" }));
+    }
+
+    async function sendCurrentMessage(text) {
+      let payload = text;
+      if (pendingReply) {
+        payload = JSON.stringify({ kind: "reply", text, reply_to: pendingReply });
+      }
+      await sendChatText(payload);
+      if (pendingReply) {
+        pendingReply = null;
+        updateReplyPreview();
+      }
+    }
+
+    async function uploadAttachment(file, messageKind = "attachment", messageMetadata = {}) {
+      if (currentChatType === "dm" && (currentDMBlockedByMe || currentDMBlockedMe)) {
+        notice("chatNotice", "You cannot send messages while either user has blocked the other.");
+        return false;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        notice("chatNotice", "Attachments must be 10 MB or smaller.");
+        return false;
+      }
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        notice("chatNotice", "Chat is still connecting. Try again in a moment.");
+        return false;
+      }
+      try {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        let ciphertext;
+        let envelope = {};
+        if (currentChatType === "dm") {
+          const encrypted = await encryptDirectBytes(bytes);
+          ciphertext = encrypted.ciphertext;
+          envelope = encrypted.envelope;
+        } else {
+          const nonce = crypto.getRandomValues(new Uint8Array(12));
+          ciphertext = new Uint8Array(await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: nonce, additionalData: new TextEncoder().encode("attachment:" + currentRoom) },
+            roomCryptoKey, bytes
+          ));
+          envelope = { nonce: toB64(nonce) };
+        }
+        const query = currentChatType === "dm"
+          ? "?dm=" + encodeURIComponent(currentDMId)
+          : "?room=" + encodeURIComponent(currentRoom);
+        const response = await fetch("/api/attachments" + query, {
+          method: "POST",
+          headers: { Authorization: "Bearer " + token, "Content-Type": "application/octet-stream" },
+          body: ciphertext
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Could not upload attachment");
+        const message = {
+          kind: messageKind, attachment_id: result.id, filename: file.name.slice(0, 200),
+          mime: file.type || "application/octet-stream", size: file.size, ...envelope, ...messageMetadata
+        };
+        if (pendingReply) message.reply_to = pendingReply;
+        await sendChatText(JSON.stringify(message));
+        if (pendingReply) {
+          pendingReply = null;
+          updateReplyPreview();
+        }
+        return true;
+      } catch (err) {
+        notice("chatNotice", err.message || "Could not encrypt or upload attachment.");
+        return false;
+      }
+    }
+
+    function stopDMRecording(cancel = false) {
+      const state = activeDMRecording;
+      if (!state) return;
+      state.cancelled = state.cancelled || cancel;
+      clearTimeout(state.timeout);
+      if (state.recorder.state !== "inactive") state.recorder.stop();
+    }
+
+    async function toggleDMRecording(kind) {
+      if (activeDMRecording) {
+        if (activeDMRecording.kind !== kind) {
+          notice("chatNotice", "Stop the current recording before starting another.");
+          return;
+        }
+        stopDMRecording();
+        return;
+      }
+      if (currentChatType !== "dm") {
+        notice("chatNotice", "Voice and video messages are available in direct chats.");
+        return;
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === "undefined") {
+        notice("chatNotice", "This browser does not support voice or video recording.");
+        return;
+      }
+      const conversationID = currentDMId;
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: kind === "video-note" ? { facingMode: "user" } : false
+        });
+        if (currentChatType !== "dm" || currentDMId !== conversationID) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        const preferredTypes = kind === "voice-note"
+          ? ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
+          : ["video/webm;codecs=vp8,opus", "video/webm", "video/mp4"];
+        const supportedType = typeof MediaRecorder.isTypeSupported === "function"
+          ? preferredTypes.find(type => MediaRecorder.isTypeSupported(type))
+          : "";
+        const mediaOptions = kind === "video-note"
+          ? { videoBitsPerSecond: 1000000, audioBitsPerSecond: 64000 }
+          : { audioBitsPerSecond: 64000 };
+        if (supportedType) mediaOptions.mimeType = supportedType;
+        const recorder = new MediaRecorder(stream, mediaOptions);
+        const button = kind === "voice-note" ? $("voiceRecordButton") : $("videoRecordButton");
+        const state = {
+          kind, recorder, stream, chunks: [], button,
+          originalLabel: button.textContent, conversationID, cancelled: false, timeout: null, size: 0
+        };
+        activeDMRecording = state;
+        button.textContent = kind === "voice-note" ? "■ Stop voice note" : "■ Stop video note";
+        button.classList.add("recording");
+        $("voiceRecordButton").disabled = kind !== "voice-note";
+        $("videoRecordButton").disabled = kind !== "video-note";
+        $("recordingNotice").textContent = kind === "voice-note"
+          ? "Recording voice note · maximum 60 seconds"
+          : "Recording video note · maximum 30 seconds";
+        $("recordingNotice").classList.remove("hidden");
+        recorder.ondataavailable = event => {
+          if (event.data.size) {
+            state.chunks.push(event.data);
+            state.size += event.data.size;
+            if (state.size > 10 * 1024 * 1024 && recorder.state === "recording") recorder.stop();
+          }
+        };
+        recorder.onerror = () => {
+          notice("chatNotice", "Recording failed. Check your camera or microphone permission.");
+          stopDMRecording(true);
+        };
+        recorder.onstop = async () => {
+          clearTimeout(state.timeout);
+          state.stream.getTracks().forEach(track => track.stop());
+          state.button.textContent = state.originalLabel;
+          state.button.classList.remove("recording");
+          $("voiceRecordButton").disabled = false;
+          $("videoRecordButton").disabled = false;
+          $("recordingNotice").classList.add("hidden");
+          if (activeDMRecording === state) activeDMRecording = null;
+          if (state.cancelled || currentChatType !== "dm" || currentDMId !== state.conversationID) return;
+          const blob = new Blob(state.chunks, { type: recorder.mimeType || "application/octet-stream" });
+          if (!blob.size) {
+            notice("chatNotice", "The recording was empty. Try recording again.");
+            return;
+          }
+          if (blob.size > 10 * 1024 * 1024) {
+            notice("chatNotice", "The recording exceeded the 10 MB limit. Try a shorter note.");
+            return;
+          }
+          const extension = blob.type.includes("mp4") ? "mp4" : "webm";
+          const filename = kind === "voice-note" ? "voice-message." + extension : "video-message." + extension;
+          await uploadAttachment(new File([blob], filename, { type: blob.type }), kind);
+        };
+        recorder.start(250);
+        state.timeout = setTimeout(() => {
+          if (activeDMRecording === state && recorder.state === "recording") recorder.stop();
+        }, kind === "voice-note" ? 60000 : 30000);
+      } catch (err) {
+          if (activeDMRecording && activeDMRecording.stream === stream) {
+            const state = activeDMRecording;
+            activeDMRecording = null;
+            clearTimeout(state.timeout);
+            state.button.textContent = state.originalLabel;
+            state.button.classList.remove("recording");
+            $("voiceRecordButton").disabled = false;
+            $("videoRecordButton").disabled = false;
+            $("recordingNotice").classList.add("hidden");
+          }
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        notice("chatNotice", err.message || "Could not start recording.");
+      }
+    }
+
+    $("voiceRecordButton").onclick = () => toggleDMRecording("voice-note");
+    $("videoRecordButton").onclick = () => toggleDMRecording("video-note");
+
+    function syncSendButton() {
+      const blocked = currentChatType === "dm" && (currentDMBlockedByMe || currentDMBlockedMe);
+      const ready = Boolean(!blocked && $("messageInput").value.trim() && socket && socket.readyState === WebSocket.OPEN);
+      $("sendButton").disabled = !ready;
+      $("sendButton").classList.toggle("ready", ready);
+    }
+
+    $("messageForm").onsubmit = async e => {
+      e.preventDefault();
+      const text = $("messageInput").value.trim();
+      if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
+      try {
+        await sendCurrentMessage(text);
+        $("messageInput").value = "";
+        syncSendButton();
+      } catch (err) { notice("chatNotice", err.message); }
+    };
+    $("messageInput").addEventListener("input", () => {
+      syncSendButton();
+      if (!socket || socket.readyState !== WebSocket.OPEN) return;
+      const activeSocket = socket;
+      clearTimeout(typingTimer);
+      if (!$("messageInput").value.trim()) {
+        activeSocket.send(JSON.stringify({ type: "typing:stop" }));
+        return;
+      }
+      activeSocket.send(JSON.stringify({ type: "typing:start" }));
+      typingTimer = setTimeout(() => {
+        if (activeSocket.readyState === WebSocket.OPEN) activeSocket.send(JSON.stringify({ type: "typing:stop" }));
+      }, 1200);
+    });
+
+    function renderEmojiPicker() {
+      const categories = $("emojiCategories");
+      categories.replaceChildren();
+      Object.keys(emojiGroups).forEach(category => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "emoji-category" + (category === activeEmojiCategory ? " active" : "");
+        button.textContent = category;
+        button.setAttribute("aria-pressed", String(category === activeEmojiCategory));
+        button.onclick = () => {
+          activeEmojiCategory = category;
+          renderEmojiPicker();
+        };
+        categories.append(button);
+      });
+
+      const grid = $("emojiGrid");
+      grid.replaceChildren();
+      emojiGroups[activeEmojiCategory].forEach(emoji => {
+        const option = document.createElement("button");
+        option.type = "button";
+        option.className = "emoji-option";
+        option.textContent = emoji;
+        option.title = "Insert " + emoji;
+        option.setAttribute("aria-label", "Insert " + emoji);
+        option.onclick = () => {
+          const input = $("messageInput");
+          input.value += emoji;
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.focus();
+          $("emojiPicker").classList.add("hidden");
+          $("mediaButton").setAttribute("aria-expanded", "false");
+        };
+        grid.append(option);
+      });
+    }
+
+    function setMediaPickerTab(tab) {
+      const showGIFs = tab === "gifs";
+      $("emojiPanel").classList.toggle("hidden", showGIFs);
+      $("gifPanel").classList.toggle("hidden", !showGIFs);
+      $("emojiTab").classList.toggle("active", !showGIFs);
+      $("gifTab").classList.toggle("active", showGIFs);
+      $("emojiTab").setAttribute("aria-selected", String(!showGIFs));
+      $("gifTab").setAttribute("aria-selected", String(showGIFs));
+      if (showGIFs && !$("gifResults").children.length && !$("gifSearchInput").value) {
+        searchGIFCatalog("");
+      }
+    }
+
+    async function shareBundledGIF(result, button) {
+      button.disabled = true;
+      notice("gifStatus", "Preparing and encrypting GIF…");
+      try {
+        const response = await fetch(result.file);
+        if (!response.ok) throw new Error("This GIF could not be loaded. Try another one.");
+        const blob = await response.blob();
+        if (!blob.size || blob.size > 10 * 1024 * 1024) {
+          throw new Error("This GIF is empty or exceeds the 10 MB limit.");
+        }
+        if (blob.type && blob.type !== "image/gif" && blob.type !== "application/octet-stream") {
+          throw new Error("The selected file is not a GIF.");
+        }
+        const file = new File([blob], "ipchat-" + result.id + ".gif", { type: "image/gif" });
+        const sent = await uploadAttachment(file, "gif", {
+          attribution: {
+            title: result.title,
+            creator: "IPChat",
+            license: "Original"
+          }
+        });
+        if (sent) {
+          $("emojiPicker").classList.add("hidden");
+          $("mediaButton").setAttribute("aria-expanded", "false");
+          notice("gifStatus", "");
+        } else {
+          notice("gifStatus", "GIF was not sent. Check the chat notice and try again.");
+        }
+      } catch (err) {
+        notice("gifStatus", err.message || "Could not download this GIF.");
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    const gifCatalog = [
+      { id: "smile", title: "Big smile", tags: "happy smile hello", file: "/gifs/smile.gif" },
+      { id: "heart", title: "Sending love", tags: "love heart like", file: "/gifs/heart.gif" },
+      { id: "laugh", title: "Laughing", tags: "funny laugh lol", file: "/gifs/laugh.gif" },
+      { id: "party", title: "Party time", tags: "celebrate party congrats", file: "/gifs/party.gif" },
+      { id: "thumbsup", title: "Thumbs up", tags: "yes good approve like", file: "/gifs/thumbsup.gif" },
+      { id: "sparkle", title: "Sparkles", tags: "magic shine wow", file: "/gifs/sparkle.gif" }
+    ];
+
+    function searchGIFCatalog(query) {
+      const search = String(query || "").trim();
+      const results = $("gifResults");
+      results.replaceChildren();
+      const term = search.toLowerCase();
+      const gifs = gifCatalog.filter(gif => !term || (gif.title + " " + gif.tags).toLowerCase().includes(term));
+      if (!gifs.length) {
+        notice("gifStatus", "No matching GIFs. Try smile, love, laugh, party, like, or sparkle.");
+        return;
+      }
+      notice("gifStatus", "");
+      gifs.forEach(result => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "gif-result";
+        button.title = "Share " + result.title;
+        const image = document.createElement("img");
+        image.src = result.file;
+        image.alt = "";
+        image.loading = "lazy";
+        const info = document.createElement("span");
+        info.className = "gif-result-info";
+        const title = document.createElement("strong");
+        title.textContent = result.title;
+        const license = document.createElement("small");
+        license.textContent = "IPChat original";
+        info.append(title, license);
+        button.append(image, info);
+        button.onclick = () => shareBundledGIF(result, button);
+        results.append(button);
+      });
+    }
+
+    renderEmojiPicker();
+    $("emojiTab").onclick = () => setMediaPickerTab("emoji");
+    $("gifTab").onclick = () => setMediaPickerTab("gifs");
+    $("closeMediaPicker").onclick = () => {
+      $("emojiPicker").classList.add("hidden");
+      $("mediaButton").setAttribute("aria-expanded", "false");
+    };
+    $("gifSearchForm").onsubmit = event => {
+      event.preventDefault();
+      searchGIFCatalog($("gifSearchInput").value);
+    };
+    $("mediaButton").onclick = () => {
+      const opening = $("emojiPicker").classList.contains("hidden");
+      $("emojiPicker").classList.toggle("hidden", !opening);
+      $("mediaButton").setAttribute("aria-expanded", String(opening));
+      if (opening) {
+        setMediaPickerTab("emoji");
+        $("emojiTab").focus();
+      }
+    };
+    document.addEventListener("click", event => {
+      if (!$("emojiPicker").contains(event.target) && event.target !== $("mediaButton") && !$("mediaButton").contains(event.target)) {
+        $("emojiPicker").classList.add("hidden");
+        $("mediaButton").setAttribute("aria-expanded", "false");
+      }
+    });
+    $("attachmentButton").onclick = () => $("attachmentInput").click();
+    $("attachmentInput").onchange = async () => {
+      for (const file of $("attachmentInput").files) await uploadAttachment(file);
+      $("attachmentInput").value = "";
+    };
+    function backToHome() {
+      chatOpenGeneration++;
+      stopDMRecording(true);
+      currentRoom = "";
+      currentChatType = "room";
+      currentDMId = 0;
+      currentDMUsername = "";
+      currentDMExpiry = 0;
+      currentDMBlockedByMe = false;
+      currentDMBlockedMe = false;
+      latestDMMessageID = 0;
+      oldestMessageID = 0;
+      hasOlderMessages = false;
+      loadingOlderMessages = false;
+      pendingReply = null;
+      decryptedMessages.clear();
+      updateReplyPreview();
+      directEncryptionKeys = {};
+      if (socket) socket.close();
+      socket = null;
+      $("membersPanel").classList.remove("hidden");
+      $("mobileMembersBtn").classList.remove("hidden");
+      $("homeView").classList.remove("direct-chat");
+      $("dmExpirySelect").classList.add("hidden");
+      $("dmRecordActions").classList.add("hidden");
+      $("dmBlockButton").classList.add("hidden");
+      $("dmReportButton").classList.add("hidden");
+      $("messageInput").value = "";
+      $("messageInput").placeholder = "Message #room";
+      $("messageInput").disabled = false;
+      $("attachmentButton").disabled = false;
+      $("mediaButton").disabled = false;
+      syncSendButton();
+      $("leaveRoomBtn").disabled = true;
+      $("leaveRoomBtn").textContent = "Close";
+      $("roomTitle").textContent = "Select a room";
+      $("roomCodeLabel").textContent = "Choose a room to start chatting";
+      $("sidebarRoomName").textContent = "Your rooms";
+      $("messages").replaceChildren();
+      const empty = document.createElement("div");
+      empty.id = "emptyRoom";
+      empty.className = "empty-room";
+      empty.innerHTML = "<div><div class='big'>#</div><h2>Choose a chat</h2><p>Select a room or direct message, or start a new one.</p></div>";
+      $("messages").append(empty);
+      loadRooms();
+      loadDirectMessages();
+    }
+    $("railHome").onclick = backToHome;
+    $("mobileSidebarBtn").onclick = () => $("channelSidebar").classList.toggle("open");
+    $("mobileMembersBtn").onclick = () => $("membersPanel").classList.toggle("open");
+    $("leaveRoomBtn").onclick = async () => {
+      if (currentChatType === "dm") {
+        backToHome();
+        return;
+      }
+      if (!currentRoom || !confirm("Leave " + currentRoomName + "?")) return;
+      try {
+        await api("/api/rooms/leave", "POST", { room_code: currentRoom });
+        roomCredentials.delete(currentRoom);
+        backToHome();
+        await loadRooms();
+      } catch (err) { notice("chatNotice", err.message); }
+    };
+
+    loadOAuthProviders();
+    handleOAuthReturn().then(handled => {
+      if (handled) return;
+      if (token && username) showHome();
+      else showAuth();
+    });
+  </script>
+</body>
+</html>

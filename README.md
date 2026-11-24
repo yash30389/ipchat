@@ -1,178 +1,55 @@
-# IPChat Secure
+# IPChat Production Baseline
 
-A lightweight, encrypted, real-time chat platform. Join a room with a **room
-code + username + passphrase** — no account signup. Includes realtime
-messaging, typing/read receipts, encrypted file sharing, 1:1 video/voice
-calling (WebRTC), presence, search, dark mode, PWA support, and a full
-admin console with live chat monitoring.
+This archive is an incremental hardening of the uploaded IPChat project. It preserves the existing Go + PostgreSQL + Redis + browser UI design and adds unit-test scaffolding, an administrator-only HTML test report, stricter origin checks, WebSocket disconnect on member kick, and build hygiene fixes.
 
-Built to the stack in the project's PRD: **React + Vite + TypeScript +
-Tailwind** (frontend) and **Node.js + Express + Socket.IO + PostgreSQL
-(Prisma) + Redis** (backend). Docker/Kubernetes manifests are intentionally
-**not** included — you said you'll manage deployment yourself.
+## Run locally
 
----
+1. Install Go 1.23+ and Docker Desktop.
+2. Copy `.env.example` to `.env` and keep `.env` private. Never commit it or share real credentials.
+3. Replace the placeholders: set `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and a random `JWT_SECRET` of at least 32 bytes.
+4. Configure `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH`. Generate a bcrypt hash with `go run ./cmd/hashadmin` (the helper reads the password from the terminal; the prompt notes that input is visible).
+5. Start: `docker compose up --build -d`.
+6. Open `http://localhost:8080`.
+7. Admin test report: `http://localhost:8080/admin/test-results` (HTTP Basic authentication).
 
-## 1. Project layout
+Do not run `docker compose down -v` on a database containing data; `-v` deletes named volumes.
 
-```
-ipchat-secure/
-├── backend/          Node/Express API + Socket.IO realtime server
-│   ├── prisma/schema.prisma
-│   └── src/
-│       ├── config/        env, logger, Prisma client, Redis client
-│       ├── middleware/    auth, rate limiting, error handling
-│       ├── routes/        rooms, messages, files, admin
-│       ├── sockets/       Socket.IO handlers (chat + WebRTC signaling + admin live-watch)
-│       ├── utils/         AES-256-GCM crypto, Argon2id hashing, JWT
-│       └── jobs/          auto-delete sweep, admin seed script
-└── frontend/          React/Vite/TS/Tailwind SPA
-    └── src/
-        ├── pages/          JoinPage, ChatPage, AdminLoginPage, AdminDashboardPage
-        ├── components/     MessageBubble, ChatComposer, PresenceBar, VideoCallModal, TypingIndicator
-        ├── lib/            api client, socket client, WebRTC helper
-        └── store/          zustand auth/theme state
-```
+## Social sign-in (GitHub and Google)
 
-## 2. How identity & rooms work
+Social sign-in is optional. Create OAuth apps with these exact local callback URLs:
 
-- Anyone can **create a room**: they set a room passphrase and get back a
-  short shareable `roomCode` (e.g. `amber-falcon-42` — this is the "room IP"
-  concept from the PRD: a logical room identifier, not a literal network
-  address).
-- To **join**, a user submits `roomCode + username + passphrase`.
-  - Wrong room passphrase → rejected.
-  - New username in that room → a new identity is created, bound to the
-    passphrase they used.
-  - Existing username → the passphrase must match what that identity
-    originally used, so nobody can hijack a username in an active room.
-- Message history is scoped to `room + participant`, matching the PRD's
-  "history visible only for same room+username+passphrase" requirement.
+- GitHub: `http://localhost:8080/auth/github/callback`
+- Google: `http://localhost:8080/auth/google/callback`
 
-## 3. Security model (please read this)
+Set `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_ID`, and
+`GOOGLE_CLIENT_SECRET` in the private `.env` file. Set `OAUTH_REDIRECT_BASE` to
+the app's origin (for example `http://localhost:8080` locally or your HTTPS
+origin in production), then rebuild with `docker compose up --build -d`.
+Never put provider secrets in frontend code or share them in chat.
 
-- **At rest:** every message and file is encrypted with **AES-256-GCM**
-  using a server-held master key. Passphrases are hashed with **Argon2id**
-  (OWASP-recommended, memory-hard). Nothing is stored in plaintext.
-- **In transit:** run everything behind TLS (see §6) — Socket.IO and the
-  REST API both need HTTPS/WSS in production.
-- **Important honesty note:** the PRD also asks for an admin panel with
-  full access to chat contents. That is fundamentally in tension with true
-  end-to-end encryption, where only participants hold the keys. This build
-  encrypts at rest and in transit, but the **server holds the decryption
-  key**, so admins (and anyone who compromises an admin account or the DB +
-  master key) can read messages. If you need genuine zero-knowledge E2E
-  later, keys must be derived and held client-side only, and the admin
-  "read everything" feature would need to be dropped or replaced with
-  participant-consented access. I built it this way because you explicitly
-  asked for both; just know the trade-off exists.
-- Every admin read of a room's messages, ban, delete, and live-watch is
-  written to `AuditLog`.
-- Rate limiting on auth/join endpoints blunts passphrase brute-forcing.
-  Use a **long, random passphrase** — Argon2id slows attackers down but
-  can't save a weak passphrase.
+GitHub access requests `read:user` and `user:email`; Google requests
+`openid email profile`. New accounts are created only when the provider returns
+a verified email. Provider identities are linked by the provider's stable user
+ID, not by email, so social sign-in will not silently take over an existing
+password account.
 
-## 4. Scaling to many concurrent users
+## Tests
 
-The architecture is stateless-app + shared-state-in-infra, which is what
-lets it scale horizontally:
+Run `powershell -ExecutionPolicy Bypass -File .\\scripts\\run-tests.ps1`. The script downloads pinned Go modules first, then executes tests. The generated report is stored in `test-results/index.html`; the JSON event stream and log are stored beside it. The admin endpoint serves that HTML report after Basic authentication.
 
-- **Backend is stateless** — you can run any number of Node instances
-  behind a load balancer. No in-process session or socket state that only
-  one instance knows about.
-- **Socket.IO uses the Redis adapter** (`@socket.io/redis-adapter`), so a
-  message sent to a room reaches every user regardless of which instance
-  they're connected to.
-- **Presence** (who's online) is stored in Redis sets, not memory, so it's
-  correct across instances too.
-- **Postgres + Prisma** with cursor-based pagination on message history
-  (no expensive `OFFSET` scans as history grows).
-- **WebRTC calls are peer-to-peer** — the server only relays signaling
-  (SDP/ICE), so video/audio traffic never loads your backend. For calls
-  across restrictive NATs/firewalls you'll want to add a TURN server (see
-  `frontend/src/lib/webrtc.ts` — there's a comment showing where).
-- Sticky sessions aren't required (Redis adapter handles cross-instance
-  delivery), but if you terminate WebSockets at a load balancer, make sure
-  it supports WebSocket passthrough.
+## Important scope and release status
 
-To genuinely serve millions of concurrent users you'll also need, at the
-infrastructure layer (your call, since you're managing deployment):
-multiple backend replicas behind a load balancer, a managed/clustered
-Postgres with read replicas, a Redis cluster, object storage (S3-compatible)
-for files instead of local disk, a CDN for the frontend build, and a TURN
-service for calls. The code is written so none of that requires app
-changes — it's ops/infra scaling on top of an already-horizontal design.
+This is **not yet the complete production IPChat specification**. Password-protected rooms provide basic group conversations with owner/maintainer roles, member management, and moderation; direct messages are one-to-one. Room and direct-message content and attachments are encrypted in the browser before storage; direct-message keys are stored in browser local storage and have no recovery/backup flow. Both chat types support text, emoji, file messages, replies, reactions, history pagination (100 messages per page), and editing/deleting your own messages. Room owners and maintainers may also delete room messages. Direct messages include delivery/read receipts and optional disappearing-message timers (off by default; 24 hours, 7 days, or 90 days for new messages and attachments). Blocks prevent direct messaging and typing in either direction but do not hide shared room messages or erase existing history. Users can report another account; report reasons are visible only through the HTTP Basic-authenticated `/admin/reports` endpoint and do not include decrypted message content. Attachments and recorded voice/video messages are limited to 10 MB. Browser recording requires explicit microphone/camera permission and is limited to 60 seconds for voice and 30 seconds for video. The composer provides native Unicode emoji and a searchable collection of original, locally bundled GIF reactions; selected GIFs are encrypted and sent as attachments. Live calls/screen sharing, email verification, password reset, refresh-token rotation/revocation, notifications, QR invitations, ownership transfer, general retention controls, and a full admin operations console remain out of scope. Integration, cross-device key recovery, and load testing still need separate validation.
 
-## 5. Local setup (no Docker)
+Emoji and GIF sharing are grouped in one responsive composer picker. Emoji are standard Unicode characters rendered by the user's platform font; no Instagram artwork is bundled. The send button becomes active only when a chat connection is ready and the message field contains text. Online/offline presence is automatic for authenticated users with an active app connection; users cannot manually set their presence. Disappearing timers apply only to messages and attachments created after the setting is changed. Expired direct messages and attachments are removed by a background cleanup task. Delivery/read receipts and disappearing timers currently apply to direct messages, not group rooms.
 
-**Prerequisites:** Node.js 20+, a running PostgreSQL instance, a running
-Redis instance.
+The existing SQL migration `migrations/002_persistent_members.sql` is retained for review and is not automatically applied by the current application migration function. Do not run it blindly: it conflicts with the existing `room_members` table definition. A proper versioned migration reconciliation is required before applying it to a database with real data.
 
-### Backend
-```bash
-cd backend
-cp .env.example .env
-# Edit .env: set DATABASE_URL, REDIS_URL, and generate a real master key:
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-# paste that into MASTER_ENCRYPTION_KEY
+## Security notes
 
-npm install
-npm run prisma:generate
-npm run prisma:dev        # creates tables
-npm run seed:admin        # creates your first admin login (uses SEED_ADMIN_* from .env)
-npm run dev                # http://localhost:4000
-```
-
-### Frontend
-```bash
-cd frontend
-cp .env.example .env       # defaults point at localhost:4000, adjust if needed
-npm install
-npm run dev                 # http://localhost:5173
-```
-
-Open two browser windows at `http://localhost:5173`, create a room in one,
-join it from both with the same room code + passphrase and different
-usernames, and chat/call between them. Admin console is at
-`http://localhost:5173/admin/login`.
-
-## 6. Deploying yourself (brief pointers, since you're handling this)
-
-- Put Nginx (or your LB of choice) in front, terminate TLS there, proxy
-  `/api` to the backend and pass through `Upgrade`/`Connection` headers for
-  Socket.IO's WebSocket transport.
-- Set `NODE_ENV=production`, real secrets, and a TURN server for calls.
-- Point `UPLOAD_DIR` at a mounted volume, or swap `src/routes/files.js` to
-  write to S3-compatible storage for multi-instance deployments.
-- Run `npm run prisma:migrate` (not `prisma:dev`) against production.
-
-## 7. Feature checklist vs. the PRD
-
-| Requirement | Status |
-|---|---|
-| Realtime messaging | ✅ Socket.IO |
-| Typing / read receipts | ✅ |
-| Encrypted files | ✅ AES-256-GCM at rest |
-| Room code join (the "room IP" concept) | ✅ |
-| Dark mode | ✅ |
-| Search | ✅ (per-room, bounded scan) |
-| Auto delete | ✅ per-room TTL sweep job |
-| Notifications | ⚠️ in-app only (typing/presence/system notices). Push notifications need a service worker + push provider (e.g. Web Push/FCM) — not wired up, ask if you want it added |
-| PWA | ✅ manifest + service worker via `vite-plugin-pwa` |
-| Video calling | ✅ WebRTC, 1:1, signaled over Socket.IO |
-| Admin: full chat access | ✅ (see security trade-off in §3) |
-| Admin: live handling | ✅ live message stream + moderation broadcast + ban/delete |
-| AES-256-GCM + Argon2id | ✅ |
-| Audit logging | ✅ |
-| Docker / Kubernetes | ❌ intentionally omitted — you're managing this |
-
-## 8. Known simplifications (so nothing surprises you later)
-
-- Calls are 1:1, not group calls (group calling needs an SFU like mediasoup
-  or LiveKit — happy to add if needed).
-- Search decrypts a bounded recent window per room rather than maintaining
-  a separate search index; fine at room scale, worth revisiting if a single
-  room grows to hundreds of thousands of messages.
-- Push notifications aren't wired up (see table above).
-- No email/SMS — identity is purely room+username+passphrase, by design.
-#
+- `ALLOWED_ORIGINS` accepts comma-separated exact origins. Same-origin browser use works without setting it.
+- WebSocket upgrades use short-lived, single-use tickets in the query string; configure TLS and avoid logging query strings in production.
+- Use TLS through a reverse proxy in production.
+- The current JWT design has no server-side revocation. Treat it as a development baseline.
+- Direct-message private encryption keys are held in browser local storage. Clearing browser data or replacing the key can make old direct messages unreadable; this implementation does not sync keys between devices.
+- Do not expose this application to the public internet until the remaining security acceptance suite passes.

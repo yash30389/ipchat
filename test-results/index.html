@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>IPChat Test Results</title>
+  <style>
+    body{font:15px system-ui;background:#f5f7fb;color:#182235;margin:0;padding:32px}
+    main{max-width:900px;margin:auto}
+    section{background:white;border:1px solid #e1e7f0;border-radius:14px;padding:20px;margin:16px 0}
+    .pass{color:#087443;font-weight:700}
+    .note{color:#65738a}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>IPChat Automated Test Results</h1>
+    <p class="note">Updated 2026-11-24. This summary records checks performed for the current messaging changes.</p>
+    <section>
+      <h2 class="pass">Go unit tests: passed</h2>
+      <p>All Go packages passed with Go 1.23 in Docker, including pagination and report-reason validation tests.</p>
+    </section>
+    <section>
+      <h2 class="pass">Docker and database: passed</h2>
+      <p>Docker Compose build and startup succeeded. New moderation and receipt schema migrations are present, and <code>/health/ready</code> returned ready.</p>
+    </section>
+    <section>
+      <h2 class="pass">Messaging smoke tests: passed</h2>
+      <p>Temporary room and two-account DM checks covered WebSocket message delivery, paged history, own-message edits/deletes, DM delivery/read receipts, block/unblock enforcement, and report submission. Temporary test records were removed.</p>
+    </section>
+    <section>
+      <h2>Coverage limits</h2>
+      <p>These smoke tests do not verify browser-side encryption, encrypted attachment/media recording and playback, full room-role permission matrices, cross-device key recovery, multi-instance behavior, or load performance. See <a href="../docs/FEATURE_ACCEPTANCE_MATRIX.md">the feature acceptance matrix</a> for current limits.</p>
+    </section>
+  </main>
+</body>
+</html>

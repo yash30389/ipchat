@@ -1,0 +1,70 @@
+services:
+  ipchat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ipchat-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+      REDIS_URL: "redis://redis:6379"
+      JWT_SECRET: "${JWT_SECRET}"
+      ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
+      ADMIN_PASSWORD_HASH: "${ADMIN_PASSWORD_HASH}"
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-}"
+      OAUTH_REDIRECT_BASE: "${OAUTH_REDIRECT_BASE:-http://localhost:8080}"
+      GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID:-}"
+      GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET:-}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ipchat-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: ipchat-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB}"
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    volumes:
+      - ipchat-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ipchat-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ipchat-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ipchat-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - ipchat-network
+
+volumes:
+  ipchat-postgres-data:
+  ipchat-redis-data:
+
+networks:
+  ipchat-network:
+    driver: bridge

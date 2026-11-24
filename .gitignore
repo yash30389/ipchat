@@ -1,0 +1,4 @@
+.env
+*.zip
+test-results/go-test.jsonl
+test-results/go-test.log
